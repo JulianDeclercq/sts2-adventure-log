@@ -1,0 +1,23 @@
+# Godot
+.godot/
+
+# .NET
+bin/
+obj/
+packages/
+*.user
+
+# IDE
+.idea/
+.vs/
+.vscode/
+
+# Build / Export
+publish/
+
+# Local config (contains machine-specific paths)
+Directory.Build.props
+
+# OS
+Thumbs.db
+.DS_Store
