@@ -158,10 +158,45 @@ In `.csproj`:
    Godot.Bridge.ScriptManagerBridge.LookupScriptsInAssembly(assembly);
    ```
 
+## How to Research STS2 APIs
+
+When you need to find how a game API works (e.g., "how do I get X property from Y class"):
+
+1. **Check the official wikis first** — but note BaseLib docs are often incomplete (e.g., CardModel docs are "TODO")
+2. **Search GitHub for other STS2 mods** — this is the most reliable method. Community mods are the real documentation.
+3. **If a property isn't accessible via publicizer**, use Harmony's `Traverse.Create(instance).Property<T>("PropName").Value`
+
+### Reference Mods (known-good API usage examples)
+
+- **sts2-advisor** (QuestceSpire) — https://github.com/ebadon16/sts2-advisor
+  - `GameBridge/GameStateReader.cs` is the best single file for CardModel properties and game state access
+- **BetterSpire2** — https://github.com/jdr1813/BetterSpire2
+  - `DamageCounter/DeckTracker.cs` shows Harmony Traverse patterns for accessing properties
+- **sts-1-to-2-card** — https://github.com/rayinls/sts-1-to-2-card
+  - Good example of localization file structure (`localization/eng/cards.json`)
+
+### Localization System
+
+- Game uses JSON files at `localization/{lang_code}/cards.json`
+- Key format: `"{CARD_ID}.title"` for display name, `"{CARD_ID}.description"` for effect text
+- `CardModel.Title` resolves the localized name at runtime via the game's SmartFormat system
+
+### CardModel Properties (confirmed accessible with publicizer)
+
+| Property | Type | Returns |
+|----------|------|---------|
+| `Title` | string | Localized display name |
+| `Id` | ModelId | Has `.Entry` for internal ID string |
+| `EnergyCost` | object | Has `.Canonical` for cost value |
+| `Type` | CardType | Attack, Skill, Power, etc. |
+| `Rarity` | CardRarity | Basic, Common, Uncommon, Rare |
+| `IsUpgraded` | bool | Whether upgraded |
+| `DynamicVars` | dict-like | Damage, Block, etc. |
+
 ## Resources
 
 - [ModTemplate Wiki](https://github.com/Alchyr/ModTemplate-StS2/wiki)
-- [BaseLib Wiki](https://github.com/Alchyr/BaseLib-StS2/wiki)
+- [BaseLib Wiki](https://alchyr.github.io/BaseLib-Wiki/)
 - [Harmony Docs](https://harmony.pardeike.net/)
 - [Godot Docs](https://docs.godotengine.org/en/stable/getting_started/introduction/index.html)
 - StS Discord `#sts2-modding` channel
