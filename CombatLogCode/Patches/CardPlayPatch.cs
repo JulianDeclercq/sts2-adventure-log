@@ -17,7 +17,7 @@ public static class CardPlayPatch
         try
         {
             var cardName = __instance.Title ?? __instance.GetType().Name;
-            CombatLogTracker.RecordPlay(cardName);
+            CombatLogTracker.RecordPlay(cardName, __instance);
         }
         catch (Exception e)
         {

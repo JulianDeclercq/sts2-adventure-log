@@ -1,8 +1,10 @@
+using MegaCrit.Sts2.Core.Models;
+
 namespace CombatLog.CombatLogCode;
 
 public static class CombatLogTracker
 {
-    public record CardPlayEntry(string CardName, int TurnNumber, int OrderInTurn, int CombatNumber);
+    public record CardPlayEntry(string CardName, CardModel? Card, int TurnNumber, int OrderInTurn, int CombatNumber);
 
     public static List<CardPlayEntry> History { get; } = new();
     public static int CurrentTurn { get; set; } = 1;
@@ -10,10 +12,10 @@ public static class CombatLogTracker
 
     private static int _orderCounter;
 
-    public static void RecordPlay(string cardName)
+    public static void RecordPlay(string cardName, CardModel? card)
     {
         _orderCounter++;
-        History.Add(new CardPlayEntry(cardName, CurrentTurn, _orderCounter, CurrentCombat));
+        History.Add(new CardPlayEntry(cardName, card, CurrentTurn, _orderCounter, CurrentCombat));
         OnHistoryChanged?.Invoke();
     }
 

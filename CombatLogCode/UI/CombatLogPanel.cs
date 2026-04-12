@@ -1,4 +1,10 @@
 using Godot;
+using MegaCrit.Sts2.Core.Assets;
+using MegaCrit.Sts2.Core.Entities.Cards;
+using MegaCrit.Sts2.Core.HoverTips;
+using MegaCrit.Sts2.Core.Models;
+using MegaCrit.Sts2.Core.Nodes.Cards;
+using MegaCrit.Sts2.Core.Nodes.HoverTips;
 
 namespace CombatLog.CombatLogCode.UI;
 
@@ -13,6 +19,7 @@ public partial class CombatLogPanel : PanelContainer
     private Label _header = null!;
     private bool _isShown;
     private int _lastKnownCount;
+    private Control? _cardPreview;
 
     private static CombatLogPanel? _instance;
     public static CombatLogPanel? Instance => _instance;
@@ -84,6 +91,7 @@ public partial class CombatLogPanel : PanelContainer
             _isShown = !_isShown;
             Visible = _isShown;
             if (_isShown) RefreshList();
+            else DismissCardPreview();
             GetViewport().SetInputAsHandled();
         }
     }
@@ -134,11 +142,9 @@ public partial class CombatLogPanel : PanelContainer
                 _list.AddChild(turnLabel);
             }
 
-            // Card entry
-            var cardLabel = new Label();
-            cardLabel.Text = $"    {entry.CardName}";
-            cardLabel.AddThemeColorOverride("font_color", new Color(0.9f, 0.9f, 0.9f));
-            _list.AddChild(cardLabel);
+            // Card entry (interactive)
+            var cardControl = CreateCardEntry(entry);
+            _list.AddChild(cardControl);
         }
 
         _lastKnownCount = history.Count;
@@ -150,5 +156,78 @@ public partial class CombatLogPanel : PanelContainer
     private void ScrollToTop()
     {
         _scroll.ScrollVertical = 0;
+    }
+
+    private Control CreateCardEntry(CombatLogTracker.CardPlayEntry entry)
+    {
+        var label = new Label();
+        label.Text = $"    {entry.CardName}";
+        label.AddThemeColorOverride("font_color", new Color(0.9f, 0.9f, 0.9f));
+        label.MouseFilter = Control.MouseFilterEnum.Stop;
+
+        if (entry.Card is not null)
+        {
+            var card = entry.Card;
+
+            // Hover: show native game tooltip
+            label.MouseEntered += () =>
+            {
+                label.AddThemeColorOverride("font_color", new Color(1.0f, 0.9f, 0.4f));
+                var hoverTip = new CardHoverTip(card);
+                NHoverTipSet.CreateAndShow(label, hoverTip, HoverTipAlignment.None);
+            };
+
+            label.MouseExited += () =>
+            {
+                label.AddThemeColorOverride("font_color", new Color(0.9f, 0.9f, 0.9f));
+                NHoverTipSet.Remove(label);
+            };
+
+            // Click: show full card preview
+            label.GuiInput += (@event) =>
+            {
+                if (@event is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left })
+                    ToggleCardPreview(card);
+            };
+        }
+
+        return label;
+    }
+
+    private void ToggleCardPreview(CardModel card)
+    {
+        // If clicking same card or any card while preview is open, dismiss first
+        DismissCardPreview();
+
+        // Load game's card hover scene
+        var container = PreloadManager.Cache
+            .GetScene("res://scenes/ui/card_hover_tip.tscn")
+            .Instantiate<Control>();
+
+        var nCard = container.GetNode<NCard>("%Card");
+
+        // Position to the left of the panel
+        container.Position = new Vector2(-350, 100);
+
+        _cardPreview = container;
+        AddChild(container);
+
+        container.TreeEntered += () =>
+        {
+            Callable.From(() =>
+            {
+                nCard.Model = card;
+                nCard.UpdateVisuals(PileType.Deck, CardPreviewMode.Normal);
+            }).CallDeferred();
+        };
+    }
+
+    private void DismissCardPreview()
+    {
+        if (_cardPreview is not null)
+        {
+            _cardPreview.QueueFree();
+            _cardPreview = null;
+        }
     }
 }
