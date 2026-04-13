@@ -209,13 +209,18 @@ public partial class CombatLogPanel : PanelContainer
         var inspectScreen = FindInspectCardScreen();
         if (inspectScreen is null)
         {
-            GD.PrintErr("[CombatLog] Could not locate NInspectCardScreen in scene tree.");
-            return;
+            inspectScreen = NInspectCardScreen.Create();
+            if (inspectScreen is null)
+            {
+                GD.PrintErr("[CombatLog] Failed to create NInspectCardScreen.");
+                return;
+            }
+            GetTree().Root.AddChild(inspectScreen);
         }
 
         try
         {
-            inspectScreen.OpenInspectScreen(card);
+            inspectScreen.Open(new System.Collections.Generic.List<CardModel> { card }, 0);
         }
         catch (Exception e)
         {

@@ -11,6 +11,11 @@ A Slay the Spire 2 mod that tracks and displays cards played during a run as a t
 - **Mod ID:** `CombatLog`
 - **affects_gameplay:** `false` (observation-only, safe for multiplayer)
 
+## Git Conventions
+
+- Commit messages should be very concise (short single line)
+- Do NOT include `Co-Authored-By` trailers
+
 ## Build & Deploy
 
 ```bash
