@@ -3,7 +3,9 @@ using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.HoverTips;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Nodes.Cards;
+using MegaCrit.Sts2.Core.Nodes.Combat;
 using MegaCrit.Sts2.Core.Nodes.HoverTips;
+using MegaCrit.Sts2.Core.Nodes.Rooms;
 using MegaCrit.Sts2.Core.Nodes.Screens;
 
 namespace CombatLog.CombatLogCode.UI;
@@ -22,6 +24,9 @@ public partial class CombatLogPanel : PanelContainer
 
     private static readonly Color CardLinkColor = new(0.6f, 0.85f, 1.0f);
     private static readonly Color CardLinkHoverColor = new(1.0f, 0.95f, 0.5f);
+    private static readonly Color TargetNameColor = new(0.7f, 0.6f, 0.5f);
+
+    private NCreature? _highlightedCreature;
 
     private static CombatLogPanel? _instance;
     public static CombatLogPanel? Instance => _instance;
@@ -211,18 +216,30 @@ public partial class CombatLogPanel : PanelContainer
             label.AddThemeColorOverride("font_color", rarityColor);
             hbox.AddChild(label);
 
-            // Hover: highlight + show native game tooltip
+            // Target name (only for single-target cards)
+            if (!string.IsNullOrEmpty(entry.TargetName))
+            {
+                var targetLabel = new Label();
+                targetLabel.Text = $"→ {entry.TargetName}";
+                targetLabel.AddThemeColorOverride("font_color", TargetNameColor);
+                hbox.AddChild(targetLabel);
+            }
+
+            // Hover: highlight + show native game tooltip + highlight target creature
+            var targetCombatId = entry.TargetCombatId;
             hbox.MouseEntered += () =>
             {
                 label.AddThemeColorOverride("font_color", CardLinkHoverColor);
                 var hoverTip = new CardHoverTip(card);
                 NHoverTipSet.CreateAndShow(hbox, hoverTip, HoverTipAlignment.Left);
+                HighlightCreature(targetCombatId);
             };
 
             hbox.MouseExited += () =>
             {
                 label.AddThemeColorOverride("font_color", rarityColor);
                 NHoverTipSet.Remove(hbox);
+                ClearCreatureHighlight();
             };
 
             // Click: open the game's full inspect-card screen
@@ -245,6 +262,45 @@ public partial class CombatLogPanel : PanelContainer
             label.AddThemeColorOverride("font_color", new Color(0.6f, 0.6f, 0.6f));
             return label;
         }
+    }
+
+    private void HighlightCreature(uint? targetCombatId)
+    {
+        if (targetCombatId is null) return;
+
+        var combatRoom = FindCombatRoom();
+        if (combatRoom is null) return;
+
+        foreach (var creatureNode in combatRoom.CreatureNodes)
+        {
+            if (creatureNode.Entity?.CombatId == targetCombatId)
+            {
+                _highlightedCreature = creatureNode;
+                creatureNode.ShowSingleSelectReticle();
+                return;
+            }
+        }
+    }
+
+    private void ClearCreatureHighlight()
+    {
+        if (_highlightedCreature is not null && GodotObject.IsInstanceValid(_highlightedCreature))
+        {
+            _highlightedCreature.HideSingleSelectReticle();
+        }
+        _highlightedCreature = null;
+    }
+
+    private NCombatRoom? FindCombatRoom()
+    {
+        var root = GetTree()?.Root;
+        if (root is null) return null;
+
+        foreach (var node in root.FindChildren("*", recursive: true, owned: false))
+        {
+            if (node is NCombatRoom room) return room;
+        }
+        return null;
     }
 
     private void OpenInspectScreen(CardModel card)

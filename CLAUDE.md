@@ -48,8 +48,9 @@ Game path is auto-discovered via `Sts2PathDiscovery.props` (Steam registry + com
 ### Card System
 - `MegaCrit.Sts2.Core.Models.CardModel` — base class for all cards
   - Each card is a concrete subclass (e.g., `Models.Cards.Bash`, `Models.Cards.Strike`)
-  - `OnPlayWrapper` — called when a card is played (we patch this)
+  - `OnPlayWrapper(PlayerChoiceContext, Creature? target, bool isAutoPlay, ResourceInfo, bool)` — called when a card is played (we patch this)
   - `OnPlay` — the card's effect implementation
+  - `CurrentTarget` — `Creature?` set during `OnPlayWrapper`
   - Properties: `Id` (has `.Entry` sub-property), class name = card name
   - `Name` and `ModelId` are NOT directly accessible even with publicizer — use reflection or `GetType().Name`
 - `MegaCrit.Sts2.Core.GameActions.PlayCardAction` — game action for playing a card
@@ -68,6 +69,14 @@ Game path is auto-discovered via `Sts2PathDiscovery.props` (Steam registry + com
   - `StartCombat` — initiates combat
 - `MegaCrit.Sts2.Core.Nodes.Rooms.NCombatRoom` — Godot Node version of combat room
   - Use this for scene tree operations (UI injection, etc.)
+  - `CreatureNodes` — `IEnumerable<NCreature>` of all creatures in current combat
+- `MegaCrit.Sts2.Core.Nodes.Combat.NCreature` — Godot Node for a creature (enemy/player/ally)
+  - `Entity` — the `Creature` reference (has `Name`, `CombatId`, `IsEnemy`)
+  - `ShowSingleSelectReticle()` / `HideSingleSelectReticle()` — game's native selection ring highlight
+  - `Visuals` — `NCreatureVisuals` for shader overlays (e.g., `TryApplyLiquidOverlay(color)`)
+- `MegaCrit.Sts2.Core.Entities.Creatures.Creature` — creature entity model
+  - `Name` — display name, `CombatId` — `uint?` unique within a combat
+  - `IsEnemy` — whether this creature is on the enemy side
 
 ### Hook System
 `MegaCrit.Sts2.Core.Hooks.Hook` — async event hooks (state machine-based):
@@ -181,6 +190,9 @@ When the user shows a screenshot of an existing game UI component and asks to ma
    parent.AddChild(node);
    node.Ready += () => node.SetCard(card); // not TreeEntered!
    ```
+
+9. **Harmony `__N` parameters for method arguments** — In a Harmony prefix/postfix, use `__0`, `__1`, etc. to capture the original method's parameters by position. Example: `OnPlayWrapper`'s 2nd arg is `Creature? target`, captured as `Creature? __1`.
+10. **Decompile the game's own UI code first** — When using a game component (e.g., `NTinyCard`), decompile a game class that already uses it (e.g., `NDeckHistoryEntry.Reload()`) to see the exact setup pattern. This avoids guessing property names and call order.
 
 ## How to Research STS2 APIs
 
