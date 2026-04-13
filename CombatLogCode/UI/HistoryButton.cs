@@ -1,8 +1,6 @@
 using Godot;
 using HarmonyLib;
-using MegaCrit.Sts2.Core.HoverTips;
 using MegaCrit.Sts2.Core.Nodes.Combat;
-using MegaCrit.Sts2.Core.Nodes.HoverTips;
 
 namespace CombatLog.CombatLogCode.UI;
 
@@ -29,7 +27,6 @@ public partial class HistoryButton : TextureRect
         MouseFilter = MouseFilterEnum.Stop;
         SelfModulate = new Color(1.6f, 1.6f, 1.6f, 1);
 
-        // Scale from center
         PivotOffset = Size / 2;
 
         MouseEntered += OnMouseEntered;
@@ -37,6 +34,18 @@ public partial class HistoryButton : TextureRect
         GuiInput += OnGuiInput;
     }
 
+    private NDiscardPileButton? FindDiscardButton()
+    {
+        return GetParent()
+            ?.FindChildren("*", recursive: false, owned: false)
+            .OfType<NDiscardPileButton>()
+            .FirstOrDefault();
+    }
+
+    /// <summary>
+    /// Trigger the discard button's native OnFocus to show the hover tip at the
+    /// exact same position, then suppress the visual side-effects (scale bump).
+    /// </summary>
     private void OnMouseEntered()
     {
         _tween?.Kill();
@@ -44,18 +53,15 @@ public partial class HistoryButton : TextureRect
         _tween.TweenProperty(this, "scale", new Vector2(HoverScale, HoverScale), TweenDuration)
             .SetEase(Tween.EaseType.Out);
 
-        // Read hover tip lazily from sibling NDiscardPileButton (it's populated by now)
-        var discardBtn = GetParent()
-            ?.FindChildren("*", recursive: false, owned: false)
-            .OfType<NDiscardPileButton>()
-            .FirstOrDefault();
+        var discardBtn = FindDiscardButton();
+        if (discardBtn is null) return;
 
-        if (discardBtn is not null)
-        {
-            var hoverTip = Traverse.Create(discardBtn).Field("_hoverTip").GetValue<IHoverTip>();
-            if (hoverTip is not null)
-                NHoverTipSet.CreateAndShow(this, hoverTip, HoverTipAlignment.Left);
-        }
+        // Show hover tip via the game's own code path
+        Traverse.Create(discardBtn).Method("OnFocus").GetValue();
+
+        // Kill the discard button's scale animation and reset
+        Traverse.Create(discardBtn).Field<Tween>("_bumpTween").Value?.Kill();
+        discardBtn.Scale = Vector2.One;
     }
 
     private void OnMouseExited()
@@ -65,7 +71,12 @@ public partial class HistoryButton : TextureRect
         _tween.TweenProperty(this, "scale", Vector2.One, TweenDuration)
             .SetEase(Tween.EaseType.Out);
 
-        NHoverTipSet.Remove(this);
+        var discardBtn = FindDiscardButton();
+        if (discardBtn is null) return;
+
+        Traverse.Create(discardBtn).Method("OnUnfocus").GetValue();
+        Traverse.Create(discardBtn).Field<Tween>("_bumpTween").Value?.Kill();
+        discardBtn.Scale = Vector2.One;
     }
 
     private void OnGuiInput(InputEvent @event)
