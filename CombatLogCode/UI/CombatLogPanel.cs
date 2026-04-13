@@ -1,4 +1,10 @@
 using Godot;
+using MegaCrit.Sts2.Core.Entities.Cards;
+using MegaCrit.Sts2.Core.HoverTips;
+using MegaCrit.Sts2.Core.Models;
+using MegaCrit.Sts2.Core.Nodes.Cards;
+using MegaCrit.Sts2.Core.Nodes.HoverTips;
+using MegaCrit.Sts2.Core.Nodes.Screens;
 
 namespace CombatLog.CombatLogCode.UI;
 
@@ -13,6 +19,9 @@ public partial class CombatLogPanel : PanelContainer
     private Label _header = null!;
     private bool _isShown;
     private int _lastKnownCount;
+
+    private static readonly Color CardLinkColor = new(0.6f, 0.85f, 1.0f);
+    private static readonly Color CardLinkHoverColor = new(1.0f, 0.95f, 0.5f);
 
     private static CombatLogPanel? _instance;
     public static CombatLogPanel? Instance => _instance;
@@ -47,7 +56,7 @@ public partial class CombatLogPanel : PanelContainer
 
         // Header
         _header = new Label();
-        _header.Text = "Combat Log (H to toggle)";
+        _header.Text = "Combat Log (F to toggle)";
         _header.HorizontalAlignment = HorizontalAlignment.Center;
         _header.AddThemeColorOverride("font_color", new Color(0.9f, 0.8f, 0.3f));
         vbox.AddChild(_header);
@@ -79,13 +88,18 @@ public partial class CombatLogPanel : PanelContainer
 
     public override void _UnhandledKeyInput(InputEvent @event)
     {
-        if (@event is InputEventKey key && key.Pressed && !key.Echo && key.Keycode == Key.H)
+        if (@event is InputEventKey key && key.Pressed && !key.Echo && key.Keycode == Key.F)
         {
-            _isShown = !_isShown;
-            Visible = _isShown;
-            if (_isShown) RefreshList();
+            Toggle();
             GetViewport().SetInputAsHandled();
         }
+    }
+
+    public void Toggle()
+    {
+        _isShown = !_isShown;
+        Visible = _isShown;
+        if (_isShown) RefreshList();
     }
 
     private void OnHistoryChanged()
@@ -134,11 +148,9 @@ public partial class CombatLogPanel : PanelContainer
                 _list.AddChild(turnLabel);
             }
 
-            // Card entry
-            var cardLabel = new Label();
-            cardLabel.Text = $"    {entry.CardName}";
-            cardLabel.AddThemeColorOverride("font_color", new Color(0.9f, 0.9f, 0.9f));
-            _list.AddChild(cardLabel);
+            // Card entry (interactive)
+            var cardControl = CreateCardEntry(entry);
+            _list.AddChild(cardControl);
         }
 
         _lastKnownCount = history.Count;
@@ -150,5 +162,125 @@ public partial class CombatLogPanel : PanelContainer
     private void ScrollToTop()
     {
         _scroll.ScrollVertical = 0;
+    }
+
+    private static Color GetRarityColor(CardRarity rarity) => rarity switch
+    {
+        CardRarity.Basic => new Color(0.7f, 0.7f, 0.7f),
+        CardRarity.Common => new Color(1f, 1f, 1f),
+        CardRarity.Uncommon => new Color(0.5f, 0.9f, 0.3f),
+        CardRarity.Rare => new Color(1f, 0.85f, 0.2f),
+        _ => CardLinkColor
+    };
+
+    private const string TinyCardScenePath = "res://scenes/cards/tiny_card.tscn";
+    private static PackedScene? _tinyCardScene;
+    private const float CardIconSize = 24;
+
+    private Control CreateCardEntry(CombatLogTracker.CardPlayEntry entry)
+    {
+        var displayText = string.IsNullOrEmpty(entry.PlayerName)
+            ? entry.CardName
+            : $"{entry.CardName} [{entry.PlayerName}]";
+
+        if (entry.Card is not null)
+        {
+            var card = entry.Card;
+            var rarityColor = GetRarityColor(card.Rarity);
+
+            var hbox = new HBoxContainer();
+            hbox.AddThemeConstantOverride("separation", 4);
+            hbox.MouseFilter = Control.MouseFilterEnum.Stop;
+
+            // Card icon: use the game's NTinyCard scene
+            _tinyCardScene ??= GD.Load<PackedScene>(TinyCardScenePath);
+            if (_tinyCardScene is not null)
+            {
+                var tinyCard = _tinyCardScene.Instantiate<NTinyCard>();
+                tinyCard.CustomMinimumSize = new Vector2(CardIconSize, CardIconSize);
+                tinyCard.Scale = new Vector2(0.4f, 0.4f);
+                hbox.AddChild(tinyCard);
+                // Defer SetCard until after _Ready() (Ready fires after _Ready completes)
+                var cardRef = card;
+                tinyCard.Ready += () => tinyCard.SetCard(cardRef);
+            }
+
+            // Card name label
+            var label = new Label();
+            label.Text = displayText;
+            label.AddThemeColorOverride("font_color", rarityColor);
+            hbox.AddChild(label);
+
+            // Hover: highlight + show native game tooltip
+            hbox.MouseEntered += () =>
+            {
+                label.AddThemeColorOverride("font_color", CardLinkHoverColor);
+                var hoverTip = new CardHoverTip(card);
+                NHoverTipSet.CreateAndShow(hbox, hoverTip, HoverTipAlignment.Left);
+            };
+
+            hbox.MouseExited += () =>
+            {
+                label.AddThemeColorOverride("font_color", rarityColor);
+                NHoverTipSet.Remove(hbox);
+            };
+
+            // Click: open the game's full inspect-card screen
+            hbox.GuiInput += (@event) =>
+            {
+                if (@event is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left })
+                {
+                    NHoverTipSet.Remove(hbox);
+                    OpenInspectScreen(card);
+                }
+            };
+
+            return hbox;
+        }
+        else
+        {
+            // Non-interactive entry (no card reference)
+            var label = new Label();
+            label.Text = $"    {displayText}";
+            label.AddThemeColorOverride("font_color", new Color(0.6f, 0.6f, 0.6f));
+            return label;
+        }
+    }
+
+    private void OpenInspectScreen(CardModel card)
+    {
+        var inspectScreen = FindInspectCardScreen();
+        if (inspectScreen is null)
+        {
+            inspectScreen = NInspectCardScreen.Create();
+            if (inspectScreen is null)
+            {
+                GD.PrintErr("[CombatLog] Failed to create NInspectCardScreen.");
+                return;
+            }
+            GetTree().Root.AddChild(inspectScreen);
+        }
+
+        try
+        {
+            inspectScreen.Open(new System.Collections.Generic.List<CardModel> { card }, 0);
+        }
+        catch (Exception e)
+        {
+            GD.PrintErr($"[CombatLog] Failed to open inspect screen: {e.Message}");
+        }
+    }
+
+    private NInspectCardScreen? FindInspectCardScreen()
+    {
+        var root = GetTree()?.Root;
+        if (root is null) return null;
+
+        // Search the whole tree (owned: false because the screen isn't owned by our scene)
+        foreach (var node in root.FindChildren("*", nameof(NInspectCardScreen), recursive: true, owned: false))
+        {
+            if (node is NInspectCardScreen screen) return screen;
+        }
+        return null;
     }
 }
