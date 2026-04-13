@@ -200,9 +200,9 @@ public partial class CombatLogPanel : PanelContainer
                 tinyCard.CustomMinimumSize = new Vector2(CardIconSize, CardIconSize);
                 tinyCard.Scale = new Vector2(0.4f, 0.4f);
                 hbox.AddChild(tinyCard);
-                // Defer SetCard until node enters the scene tree (when _Ready() has fired)
+                // Defer SetCard until after _Ready() (Ready fires after _Ready completes)
                 var cardRef = card;
-                tinyCard.TreeEntered += () => tinyCard.SetCard(cardRef);
+                tinyCard.Ready += () => tinyCard.SetCard(cardRef);
             }
 
             // Card name label

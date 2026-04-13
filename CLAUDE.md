@@ -174,6 +174,13 @@ When the user shows a screenshot of an existing game UI component and asks to ma
    var assembly = Assembly.GetExecutingAssembly();
    Godot.Bridge.ScriptManagerBridge.LookupScriptsInAssembly(assembly);
    ```
+7. **`TreeEntered` vs `Ready` signal** — `TreeEntered` fires when a node enters the scene tree but **before** `_Ready()` runs. If you need child node references that are initialized in `_Ready()`, use the `Ready` signal instead (fires **after** `_Ready()` completes). Order: `TreeEntered` → children's `_Ready()` → parent's `_Ready()` → `Ready` signal.
+8. **Instantiated scenes need the tree for `_Ready()`** — when you instantiate a PackedScene and call methods that depend on `_Ready()` (like `NTinyCard.SetCard()`), defer the call until after the node is in the tree. Pattern:
+   ```csharp
+   var node = scene.Instantiate<NTinyCard>();
+   parent.AddChild(node);
+   node.Ready += () => node.SetCard(card); // not TreeEntered!
+   ```
 
 ## How to Research STS2 APIs
 
