@@ -52,41 +52,30 @@ public class WindowHelper {
 
 $exe = Join-Path $gameDir "SlayTheSpire2.exe"
 
-# ---------- 6. Launch + repeated MoveWindow (outlasts game's delayed restore) ----------
-function Launch-AndTile {
-    param(
-        [string[]]$GameArgs,
-        [int]$X, [int]$Y, [int]$W, [int]$H,
-        [string]$Label
-    )
-    Write-Host "Launching $Label ($X,$Y,${W}x${H})..."
-    $p = Start-Process $exe -ArgumentList $GameArgs -PassThru
+# ---------- 6. Launch both processes upfront, then tile them in parallel ----------
+Write-Host "Launching HOST + CLIENT..."
+$hostProc   = Start-Process $exe -ArgumentList @("--windowed","-fastmp","host_standard") -PassThru
+$clientProc = Start-Process $exe -ArgumentList @("--windowed","-fastmp","join")          -PassThru
 
-    # Poll for window handle (up to 20s)
-    for ($i = 0; $i -lt 40; $i++) {
-        $p.Refresh()
-        if ($p.MainWindowHandle -ne [IntPtr]::Zero) { break }
-        Start-Sleep -Milliseconds 500
-    }
-    if ($p.MainWindowHandle -eq [IntPtr]::Zero) {
-        Write-Warning "$Label : no MainWindowHandle after 20s, skipping tile"
-        return $p
-    }
+# Rect per process
+$targets = @(
+    @{ Proc = $hostProc;   X = 0;      Y = 0; W = $halfW; H = $screenH; Label = "HOST"   },
+    @{ Proc = $clientProc; X = $halfW; Y = 0; W = $halfW; H = $screenH; Label = "CLIENT" }
+)
 
-    # Repeat MoveWindow for 15s to outlast Godot's delayed window_set_position
-    for ($t = 0; $t -lt 15; $t++) {
-        Start-Sleep -Milliseconds 1000
-        $p.Refresh()
-        if ($p.MainWindowHandle -ne [IntPtr]::Zero) {
-            [WindowHelper]::MoveWindow($p.MainWindowHandle, $X, $Y, $W, $H, $true) | Out-Null
+# Interleaved loop: ~15s total, MoveWindow both each tick
+$deadline = (Get-Date).AddSeconds(15)
+while ((Get-Date) -lt $deadline) {
+    foreach ($t in $targets) {
+        $t.Proc.Refresh()
+        if ($t.Proc.MainWindowHandle -ne [IntPtr]::Zero) {
+            [WindowHelper]::MoveWindow($t.Proc.MainWindowHandle, $t.X, $t.Y, $t.W, $t.H, $true) | Out-Null
         }
     }
-    Write-Host "$Label tiled: pid=$($p.Id)"
-    return $p
+    Start-Sleep -Milliseconds 1000
 }
-
-$hostProc   = Launch-AndTile -GameArgs @("--windowed","-fastmp","host_standard") -X 0      -Y 0 -W $halfW -H $screenH -Label "HOST"
-$clientProc = Launch-AndTile -GameArgs @("--windowed","-fastmp","join")          -X $halfW -Y 0 -W $halfW -H $screenH -Label "CLIENT"
+Write-Host "HOST tiled: pid=$($hostProc.Id)"
+Write-Host "CLIENT tiled: pid=$($clientProc.Id)"
 
 # ---------- 7. Additional clients (no tiling) ----------
 $extraPids = @()

@@ -23,5 +23,5 @@ After invoking: reply with a single short line (e.g. "Launching…") and stop. D
 ## Notes
 
 - Tiling covers host + player 2 only. Players 3+ launch at default window position.
-- Script blocks ~30s total (2× 15s MoveWindow retry loops, serial).
+- Script blocks ~15s total (both launch immediately, single 15s MoveWindow retry loop covers both).
 - Game rewrites `settings.save` on exit — user's fullscreen pref persists normally after testing.
