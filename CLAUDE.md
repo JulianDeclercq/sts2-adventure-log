@@ -11,6 +11,10 @@ A Slay the Spire 2 mod that tracks and displays cards played during a run as a t
 - **Mod ID:** `CombatLog`
 - **affects_gameplay:** `false` (observation-only, safe for multiplayer)
 
+## Roadmap
+
+Before scoping new work, read `plans/roadmap.md`. It defines core goals (multiplayer-first), open questions, sequencing, and non-goals. If a new request conflicts with it, surface the conflict; don't silently drift.
+
 ## Git Conventions
 
 - Commit messages should be very concise (short single line)
@@ -24,6 +28,8 @@ dotnet publish        # Also exports .pck via Godot (requires GodotPath in Direc
 ```
 
 **Do NOT build automatically after every change.** Only build when the user explicitly asks. When the user says "build", run `dotnet build` which compiles and auto-deploys the DLL + manifest to the game's mods folder.
+
+**Do NOT dump build output into the conversation.** After running `dotnet build`, report only a one-line summary: `Build ok` / `Build failed: <first error>`. Do not paste warnings, "copying dll", time elapsed, or any other build noise. Check the exit code and the error count. If you need warning/error detail to fix something, grep the output file for `error CS` — don't tail the whole log.
 
 The build auto-deploys to: `<Sts2Path>/mods/CombatLog/`
 

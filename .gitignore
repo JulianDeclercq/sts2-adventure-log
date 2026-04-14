@@ -22,6 +22,9 @@ Directory.Build.props
 .claude/*
 !.claude/commands/
 
+# OMC workspace (local planning, state, logs)
+.omc/
+
 # OS
 Thumbs.db
 .DS_Store

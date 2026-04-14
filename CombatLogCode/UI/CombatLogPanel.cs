@@ -26,7 +26,7 @@ public partial class CombatLogPanel : PanelContainer
     private static readonly Color CardLinkHoverColor = new(1.0f, 0.95f, 0.5f);
     private static readonly Color TargetNameColor = new(0.7f, 0.6f, 0.5f);
 
-    private NCreature? _highlightedCreature;
+    private readonly List<NCreature> _highlightedCreatures = new();
 
     private static CombatLogPanel? _instance;
     public static CombatLogPanel? Instance => _instance;
@@ -225,21 +225,23 @@ public partial class CombatLogPanel : PanelContainer
                 hbox.AddChild(targetLabel);
             }
 
-            // Hover: highlight + show native game tooltip + highlight target creature
+            // Hover: highlight + show native game tooltip + highlight target + player creatures
             var targetCombatId = entry.TargetCombatId;
+            var playerCombatId = entry.PlayerCombatId;
             hbox.MouseEntered += () =>
             {
                 label.AddThemeColorOverride("font_color", CardLinkHoverColor);
                 var hoverTip = new CardHoverTip(card);
                 NHoverTipSet.CreateAndShow(hbox, hoverTip, HoverTipAlignment.Left);
                 HighlightCreature(targetCombatId);
+                HighlightCreature(playerCombatId);
             };
 
             hbox.MouseExited += () =>
             {
                 label.AddThemeColorOverride("font_color", rarityColor);
                 NHoverTipSet.Remove(hbox);
-                ClearCreatureHighlight();
+                ClearCreatureHighlights();
             };
 
             // Click: open the game's full inspect-card screen
@@ -264,31 +266,34 @@ public partial class CombatLogPanel : PanelContainer
         }
     }
 
-    private void HighlightCreature(uint? targetCombatId)
+    private void HighlightCreature(uint? combatId)
     {
-        if (targetCombatId is null) return;
+        if (combatId is null) return;
 
         var combatRoom = FindCombatRoom();
         if (combatRoom is null) return;
 
         foreach (var creatureNode in combatRoom.CreatureNodes)
         {
-            if (creatureNode.Entity?.CombatId == targetCombatId)
+            if (creatureNode.Entity?.CombatId == combatId)
             {
-                _highlightedCreature = creatureNode;
+                _highlightedCreatures.Add(creatureNode);
                 creatureNode.ShowSingleSelectReticle();
                 return;
             }
         }
     }
 
-    private void ClearCreatureHighlight()
+    private void ClearCreatureHighlights()
     {
-        if (_highlightedCreature is not null && GodotObject.IsInstanceValid(_highlightedCreature))
+        foreach (var creatureNode in _highlightedCreatures)
         {
-            _highlightedCreature.HideSingleSelectReticle();
+            if (GodotObject.IsInstanceValid(creatureNode))
+            {
+                creatureNode.HideSingleSelectReticle();
+            }
         }
-        _highlightedCreature = null;
+        _highlightedCreatures.Clear();
     }
 
     private NCombatRoom? FindCombatRoom()
