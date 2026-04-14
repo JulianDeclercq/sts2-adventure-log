@@ -24,6 +24,22 @@ public static class CombatLogTracker
         Append(e);
     }
 
+    public static void RecordDamageReceived(
+        string victimName, uint? victimCombatId,
+        string sourceName, uint? sourceCombatId, string? sourceCardName,
+        int blocked, int hpLost, int overkill, bool wasKilled, bool wasFullyBlocked,
+        ulong? ownerNetId, string ownerName, bool isLocal)
+    {
+        _orderCounter++;
+        var e = new DamageReceivedEvent(
+            victimName, victimCombatId,
+            sourceName, sourceCombatId, sourceCardName,
+            blocked, hpLost, overkill, wasKilled, wasFullyBlocked,
+            ownerNetId, ownerName, isLocal,
+            CurrentTurn, _orderCounter, CurrentCombat);
+        Append(e);
+    }
+
     public static void Append(LogEvent e)
     {
         History.Add(e);

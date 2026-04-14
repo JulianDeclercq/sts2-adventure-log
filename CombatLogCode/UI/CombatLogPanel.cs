@@ -156,6 +156,7 @@ public partial class CombatLogPanel : PanelContainer
     private Control? BuildRow(LogEvent ev) => ev switch
     {
         CardPlayEvent card => new CardEntryRow(card, _highlighter, OpenInspectScreen),
+        DamageReceivedEvent dmg => new DamageEntryRow(dmg, _highlighter),
         _ => null
     };
 

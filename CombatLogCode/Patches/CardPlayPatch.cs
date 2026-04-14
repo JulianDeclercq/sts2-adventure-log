@@ -2,8 +2,6 @@ using Godot;
 using HarmonyLib;
 using MegaCrit.Sts2.Core.Entities.Creatures;
 using MegaCrit.Sts2.Core.Models;
-using MegaCrit.Sts2.Core.Platform;
-using MegaCrit.Sts2.Core.Runs;
 
 namespace CombatLog.CombatLogCode.Patches;
 
@@ -20,7 +18,8 @@ public static class CardPlayPatch
         try
         {
             var cardName = __instance.Title ?? __instance.GetType().Name;
-            ResolveOwner(__instance, out var ownerNetId, out var ownerName, out var isLocal);
+            var ownerNetId = __instance.Owner?.NetId;
+            OwnerResolver.Resolve(ownerNetId, out var ownerName, out var isLocal);
 
             var targetName = __1?.Name ?? "";
             var targetCombatId = __1?.CombatId;
@@ -35,36 +34,5 @@ public static class CardPlayPatch
         {
             GD.PrintErr($"[CombatLog] Error recording card play: {e.Message}");
         }
-    }
-
-    private static void ResolveOwner(CardModel card, out ulong? netId, out string name, out bool isLocal)
-    {
-        netId = null;
-        name = "";
-        isLocal = true;
-
-        try
-        {
-            if (card.Owner is null) return;
-            netId = card.Owner.NetId;
-
-            var netService = RunManager.Instance?.NetService;
-            if (netService is null) return;
-
-            var resolved = PlatformUtil.GetPlayerName(netService.Platform, card.Owner.NetId);
-            if (!string.IsNullOrEmpty(resolved) && !ulong.TryParse(resolved, out _))
-                name = resolved;
-
-            try
-            {
-                var localNetId = Traverse.Create(netService).Property("LocalPlayer").Field("NetId").GetValue<ulong>();
-                isLocal = localNetId == card.Owner.NetId;
-            }
-            catch
-            {
-                // LocalPlayer not resolvable — keep default (treat as local to match solo behavior)
-            }
-        }
-        catch { }
     }
 }
