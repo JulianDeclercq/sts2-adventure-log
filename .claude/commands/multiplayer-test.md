@@ -2,14 +2,14 @@ Launch local multiplayer test instances of Slay the Spire 2, tiled side-by-side 
 
 Argument: $ARGUMENTS (optional: number of players, default 2)
 
-All logic lives in `Scripts/test-multiplayer.ps1`. It handles: build, steam_appid, `settings.save` patch (fullscreen=false), resolution detect, launch, and MoveWindow-based tiling with a 15s retry loop to outlast Godot's delayed window-position restore.
+All logic lives in `Scripts/multiplayer-test.ps1`. It handles: build, steam_appid, `settings.save` patch (fullscreen=false), resolution detect, launch, and MoveWindow-based tiling with a 15s retry loop to outlast Godot's delayed window-position restore.
 
 ## Invoke
 
 Run the script as a fire-and-forget background process. **Do not capture or report its stdout/stderr in the conversation.** The user watches the game windows — the script's log is noise in Claude's context. Once the process is started, the slash command is done.
 
 ```bash
-powershell -NoProfile -File Scripts/test-multiplayer.ps1 -Players ${ARGUMENTS:-2} >/dev/null 2>&1 &
+powershell -NoProfile -File Scripts/multiplayer-test.ps1 -Players ${ARGUMENTS:-2} >/dev/null 2>&1 &
 ```
 
 After invoking: reply with a single short line (e.g. "Launching…") and stop. Do not tail output, do not wait for exit, do not repeat errors. If the user reports a problem, investigate on request — not proactively.
@@ -18,7 +18,7 @@ After invoking: reply with a single short line (e.g. "Launching…") and stop. D
 
 - **Game directory:** `C:/Program Files (x86)/Steam/steamapps/common/Slay the Spire 2/`
 - **Settings file:** `%APPDATA%/SlayTheSpire2/steam/<SteamId>/settings.save`
-- **Script:** `Scripts/test-multiplayer.ps1`
+- **Script:** `Scripts/multiplayer-test.ps1`
 
 ## Notes
 
