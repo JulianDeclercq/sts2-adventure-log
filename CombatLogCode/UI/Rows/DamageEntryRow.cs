@@ -5,12 +5,6 @@ namespace CombatLog.CombatLogCode.UI.Rows;
 
 public partial class DamageEntryRow : HBoxContainer
 {
-    private static readonly Color HpLostColor = new(0.9f, 0.3f, 0.3f);
-    private static readonly Color BlockedColor = new(0.6f, 0.7f, 0.9f);
-    private static readonly Color NeutralColor = new(0.8f, 0.8f, 0.8f);
-    private static readonly Color SourceColor = new(0.75f, 0.65f, 0.55f);
-    private static readonly Color HoverColor = new(1.0f, 0.95f, 0.5f);
-
     private readonly DamageReceivedEvent _entry;
     private readonly CreatureHighlighter _highlighter;
 
@@ -31,31 +25,14 @@ public partial class DamageEntryRow : HBoxContainer
         var labels = new List<Label>();
 
         if (!string.IsNullOrEmpty(_entry.SourceName))
-        {
-            labels.Add(AppendLabel($"{_entry.SourceName} →", SourceColor));
-        }
+            labels.Add(AppendLabel($"{_entry.SourceName} →", DamageColors.Source));
 
         var victimSuffix = string.IsNullOrEmpty(_entry.OwnerName) || _entry.OwnerName == _entry.VictimName
             ? _entry.VictimName
             : $"{_entry.VictimName} [{_entry.OwnerName}]";
-        labels.Add(AppendLabel($" {victimSuffix}:", NeutralColor));
+        labels.Add(AppendLabel($" {victimSuffix}:", DamageColors.Neutral));
 
-        if (_entry.HpLost > 0)
-        {
-            labels.Add(AppendLabel($" -{_entry.HpLost} HP", HpLostColor));
-        }
-
-        if (_entry.BlockedDamage > 0)
-        {
-            var prefix = _entry.HpLost > 0 ? " (" : " ";
-            var suffix = _entry.HpLost > 0 ? " blocked)" : " blocked";
-            labels.Add(AppendLabel($"{prefix}{_entry.BlockedDamage}{suffix}", BlockedColor));
-        }
-
-        if (_entry.WasKilled)
-        {
-            labels.Add(AppendLabel(" 💀", HpLostColor));
-        }
+        labels.AddRange(DamageColors.AppendDamageLabels(this, _entry.HpLost, _entry.BlockedDamage, _entry.WasKilled));
 
         var sourceCombatId = _entry.SourceCombatId;
         var victimCombatId = _entry.VictimCombatId;
@@ -63,7 +40,7 @@ public partial class DamageEntryRow : HBoxContainer
 
         MouseEntered += () =>
         {
-            foreach (var l in labels) l.AddThemeColorOverride("font_color", HoverColor);
+            foreach (var l in labels) l.AddThemeColorOverride("font_color", DamageColors.Hover);
             _highlighter.Highlight(sourceCombatId);
             _highlighter.Highlight(victimCombatId);
         };

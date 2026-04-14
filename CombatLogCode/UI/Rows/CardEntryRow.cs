@@ -8,7 +8,7 @@ using MegaCrit.Sts2.Core.Nodes.HoverTips;
 
 namespace CombatLog.CombatLogCode.UI.Rows;
 
-public partial class CardEntryRow : HBoxContainer
+public partial class CardEntryRow : VBoxContainer
 {
     private static readonly Color CardLinkColor = new(0.6f, 0.85f, 1.0f);
     private static readonly Color CardLinkHoverColor = new(1.0f, 0.95f, 0.5f);
@@ -20,12 +20,18 @@ public partial class CardEntryRow : HBoxContainer
     private static PackedScene? _tinyCardScene;
 
     private readonly CardPlayEvent _entry;
+    private readonly IReadOnlyList<DamageReceivedEvent> _damages;
     private readonly CreatureHighlighter _highlighter;
     private readonly Action<CardModel> _openInspect;
 
-    public CardEntryRow(CardPlayEvent entry, CreatureHighlighter highlighter, Action<CardModel> openInspect)
+    public CardEntryRow(
+        CardPlayEvent entry,
+        IReadOnlyList<DamageReceivedEvent>? damages,
+        CreatureHighlighter highlighter,
+        Action<CardModel> openInspect)
     {
         _entry = entry;
+        _damages = damages ?? Array.Empty<DamageReceivedEvent>();
         _highlighter = highlighter;
         _openInspect = openInspect;
     }
@@ -38,7 +44,6 @@ public partial class CardEntryRow : HBoxContainer
 
         if (_entry.Card is null)
         {
-            // Non-interactive fallback (no card reference)
             var fallback = new Label();
             fallback.Text = $"    {displayText}";
             fallback.AddThemeColorOverride("font_color", NoCardColor);
@@ -49,8 +54,13 @@ public partial class CardEntryRow : HBoxContainer
         var card = _entry.Card;
         var rarityColor = GetRarityColor(card.Rarity);
 
-        AddThemeConstantOverride("separation", 4);
+        AddThemeConstantOverride("separation", 0);
         MouseFilter = MouseFilterEnum.Stop;
+
+        var header = new HBoxContainer();
+        header.AddThemeConstantOverride("separation", 4);
+        header.MouseFilter = MouseFilterEnum.Pass;
+        AddChild(header);
 
         _tinyCardScene ??= GD.Load<PackedScene>(TinyCardScenePath);
         if (_tinyCardScene is not null)
@@ -58,39 +68,69 @@ public partial class CardEntryRow : HBoxContainer
             var tinyCard = _tinyCardScene.Instantiate<NTinyCard>();
             tinyCard.CustomMinimumSize = new Vector2(CardIconSize, CardIconSize);
             tinyCard.Scale = new Vector2(0.4f, 0.4f);
-            AddChild(tinyCard);
+            header.AddChild(tinyCard);
             var cardRef = card;
             tinyCard.Ready += () => tinyCard.SetCard(cardRef);
         }
 
-        var label = new Label();
-        label.Text = displayText;
-        label.AddThemeColorOverride("font_color", rarityColor);
-        AddChild(label);
+        var nameLabel = new Label();
+        nameLabel.Text = displayText;
+        nameLabel.AddThemeColorOverride("font_color", rarityColor);
+        header.AddChild(nameLabel);
 
-        if (!string.IsNullOrEmpty(_entry.TargetName))
+        var victimGroups = GroupDamagesByVictim(_damages);
+
+        if (victimGroups.Count == 0 && !string.IsNullOrEmpty(_entry.TargetName))
         {
             var targetLabel = new Label();
             targetLabel.Text = $"→ {_entry.TargetName}";
             targetLabel.AddThemeColorOverride("font_color", TargetNameColor);
-            AddChild(targetLabel);
+            header.AddChild(targetLabel);
+        }
+        else
+        {
+            foreach (var g in victimGroups)
+            {
+                var sub = new HBoxContainer();
+                sub.AddThemeConstantOverride("separation", 4);
+                sub.MouseFilter = MouseFilterEnum.Pass;
+                AddChild(sub);
+
+                var indent = new Label { Text = "    " };
+                sub.AddChild(indent);
+
+                var victimLabel = new Label();
+                victimLabel.Text = $"→ {g.VictimName}:";
+                victimLabel.AddThemeColorOverride("font_color", TargetNameColor);
+                sub.AddChild(victimLabel);
+
+                DamageColors.AppendDamageLabels(sub, g.HpLost, g.Blocked, g.Killed);
+            }
         }
 
-        var targetCombatId = _entry.TargetCombatId;
         var playerCombatId = _entry.PlayerCombatId;
+        var fallbackTargetId = _entry.TargetCombatId;
+        var victimIds = victimGroups
+            .Where(g => g.VictimCombatId.HasValue)
+            .Select(g => g.VictimCombatId)
+            .Distinct()
+            .ToList();
 
         MouseEntered += () =>
         {
-            label.AddThemeColorOverride("font_color", CardLinkHoverColor);
+            nameLabel.AddThemeColorOverride("font_color", CardLinkHoverColor);
             var hoverTip = new CardHoverTip(card);
             NHoverTipSet.CreateAndShow(this, hoverTip, HoverTipAlignment.Left);
-            _highlighter.Highlight(targetCombatId);
             _highlighter.Highlight(playerCombatId);
+            if (victimIds.Count > 0)
+                foreach (var vid in victimIds) _highlighter.Highlight(vid);
+            else
+                _highlighter.Highlight(fallbackTargetId);
         };
 
         MouseExited += () =>
         {
-            label.AddThemeColorOverride("font_color", rarityColor);
+            nameLabel.AddThemeColorOverride("font_color", rarityColor);
             NHoverTipSet.Remove(this);
             _highlighter.Clear();
         };
@@ -113,4 +153,44 @@ public partial class CardEntryRow : HBoxContainer
         CardRarity.Rare => new Color(1f, 0.85f, 0.2f),
         _ => CardLinkColor
     };
+
+    private readonly record struct VictimGroup(
+        string VictimName,
+        uint? VictimCombatId,
+        int HpLost,
+        int Blocked,
+        bool Killed);
+
+    private static List<VictimGroup> GroupDamagesByVictim(IReadOnlyList<DamageReceivedEvent> damages)
+    {
+        var result = new List<VictimGroup>();
+        var indexByKey = new Dictionary<string, int>();
+
+        foreach (var d in damages)
+        {
+            var key = d.VictimCombatId?.ToString() ?? $"name:{d.VictimName}";
+            if (indexByKey.TryGetValue(key, out var idx))
+            {
+                var existing = result[idx];
+                result[idx] = existing with
+                {
+                    HpLost = existing.HpLost + d.HpLost,
+                    Blocked = existing.Blocked + d.BlockedDamage,
+                    Killed = existing.Killed || d.WasKilled
+                };
+            }
+            else
+            {
+                indexByKey[key] = result.Count;
+                result.Add(new VictimGroup(
+                    d.VictimName,
+                    d.VictimCombatId,
+                    d.HpLost,
+                    d.BlockedDamage,
+                    d.WasKilled));
+            }
+        }
+
+        return result;
+    }
 }
