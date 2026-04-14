@@ -40,6 +40,20 @@ public static class CombatLogTracker
         Append(e);
     }
 
+    public static void RecordRelicProc(
+        string relicName, string relicId, RelicModel? relic,
+        IReadOnlyList<string> targetNames, IReadOnlyList<uint?> targetCombatIds,
+        ulong? ownerNetId, string ownerName, bool isLocal)
+    {
+        _orderCounter++;
+        var e = new RelicProcEvent(
+            relicName, relicId, relic,
+            targetNames, targetCombatIds,
+            ownerNetId, ownerName, isLocal,
+            CurrentTurn, _orderCounter, CurrentCombat);
+        Append(e);
+    }
+
     public static void Append(LogEvent e)
     {
         History.Add(e);
