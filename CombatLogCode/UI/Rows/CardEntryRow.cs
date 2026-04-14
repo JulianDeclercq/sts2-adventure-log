@@ -12,7 +12,6 @@ public partial class CardEntryRow : HBoxContainer
 {
     private static readonly Color CardLinkColor = new(0.6f, 0.85f, 1.0f);
     private static readonly Color CardLinkHoverColor = new(1.0f, 0.95f, 0.5f);
-    private static readonly Color TargetNameColor = new(0.7f, 0.6f, 0.5f);
     private static readonly Color NoCardColor = new(0.6f, 0.6f, 0.6f);
 
     private const string TinyCardScenePath = "res://scenes/cards/tiny_card.tscn";
@@ -72,15 +71,6 @@ public partial class CardEntryRow : HBoxContainer
         nameLabel.Text = displayText;
         nameLabel.AddThemeColorOverride("font_color", rarityColor);
         AddChild(nameLabel);
-
-        // Target label only when no damage — damage sub-rows render the victim(s) below.
-        if (_damages.Count == 0 && !string.IsNullOrEmpty(_entry.TargetName))
-        {
-            var targetLabel = new Label();
-            targetLabel.Text = $"→ {_entry.TargetName}";
-            targetLabel.AddThemeColorOverride("font_color", TargetNameColor);
-            AddChild(targetLabel);
-        }
 
         var playerCombatId = _entry.PlayerCombatId;
         var fallbackTargetId = _entry.TargetCombatId;

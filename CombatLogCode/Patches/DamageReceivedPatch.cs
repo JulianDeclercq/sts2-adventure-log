@@ -26,8 +26,6 @@ public static class DamageReceivedPatch
             var result = __3;
             var cardSource = __4;
 
-            if (result.TotalDamage == 0) return;
-
             var ownerNetId = receiver.Player?.NetId ?? dealer?.Player?.NetId;
             OwnerResolver.Resolve(ownerNetId, out var ownerName, out var isLocal);
 

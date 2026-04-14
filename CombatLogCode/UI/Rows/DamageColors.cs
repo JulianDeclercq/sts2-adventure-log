@@ -27,6 +27,9 @@ internal static class DamageColors
         if (killed)
             labels.Add(AddLabel(target, " 💀", HpLost));
 
+        if (labels.Count == 0)
+            labels.Add(AddLabel(target, " no damage", Neutral));
+
         return labels;
     }
 

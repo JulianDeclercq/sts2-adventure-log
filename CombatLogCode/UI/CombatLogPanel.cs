@@ -16,11 +16,8 @@ public partial class CombatLogPanel : PanelContainer
     private ScrollContainer _scroll = null!;
     private Label _header = null!;
     private CreatureHighlighter _highlighter = null!;
-    private Godot.Timer _refreshDebounce = null!;
     private bool _isShown;
     private int _lastKnownCount;
-
-    private const double RefreshDebounceSec = 0.25;
 
     private static CombatLogPanel? _instance;
     public static CombatLogPanel? Instance => _instance;
@@ -71,10 +68,6 @@ public partial class CombatLogPanel : PanelContainer
         Visible = false;
         _isShown = false;
 
-        _refreshDebounce = new Godot.Timer { OneShot = true };
-        AddChild(_refreshDebounce);
-        _refreshDebounce.Timeout += RefreshList;
-
         CombatLogTracker.OnHistoryChanged += OnHistoryChanged;
     }
 
@@ -102,8 +95,7 @@ public partial class CombatLogPanel : PanelContainer
 
     private void OnHistoryChanged()
     {
-        if (!_isShown) return;
-        _refreshDebounce.Start(RefreshDebounceSec);
+        if (_isShown) RefreshList();
     }
 
     private void RefreshList()
