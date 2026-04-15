@@ -153,6 +153,8 @@ public partial class CombatLogPanel : PanelContainer
                 break;
             case RelicRenderItem r:
                 _list.AddChild(new RelicEntryRow(r.Proc, _highlighter));
+                foreach (var p in r.Powers)
+                    _list.AddChild(new PowerSubRow(p, _highlighter));
                 break;
             case PowerRenderItem p:
                 _list.AddChild(new PowerEntryRow(p.Power, _highlighter));
@@ -197,7 +199,9 @@ public partial class CombatLogPanel : PanelContainer
         : RenderItem(Card.CombatNumber, Card.TurnNumber);
     private sealed record DamageRenderItem(DamageReceivedEvent Damage)
         : RenderItem(Damage.CombatNumber, Damage.TurnNumber);
-    private sealed record RelicRenderItem(RelicProcEvent Proc)
+    private sealed record RelicRenderItem(
+        RelicProcEvent Proc,
+        IReadOnlyList<PowerReceivedEvent> Powers)
         : RenderItem(Proc.CombatNumber, Proc.TurnNumber);
     private sealed record PowerRenderItem(PowerReceivedEvent Power)
         : RenderItem(Power.CombatNumber, Power.TurnNumber);
@@ -222,8 +226,19 @@ public partial class CombatLogPanel : PanelContainer
                     items.Add(new DamageRenderItem(damage));
                     break;
                 case RelicProcEvent relic:
-                    items.Add(new RelicRenderItem(relic));
+                {
+                    var powers = new List<PowerReceivedEvent>();
+                    while (i + 1 < history.Count
+                           && history[i + 1] is PowerReceivedEvent p
+                           && p.TurnNumber == relic.TurnNumber
+                           && p.CombatNumber == relic.CombatNumber)
+                    {
+                        powers.Add(p);
+                        i++;
+                    }
+                    items.Add(new RelicRenderItem(relic, powers));
                     break;
+                }
                 case PowerReceivedEvent power:
                     items.Add(new PowerRenderItem(power));
                     break;
