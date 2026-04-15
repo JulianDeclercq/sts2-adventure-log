@@ -230,6 +230,8 @@ Publicized DLL at: `.godot/mono/temp/obj/Debug/PublicizedAssemblies/sts2.*/sts2.
 
 Per gotcha #10 — when using a game component, decompile a game class that already uses it (e.g., `NDeckHistoryEntry.Reload()` for `NTinyCard`) to see exact setup pattern.
 
+**Cross-code grep** — for "who calls X?" or "which classes implement Y?" questions, bulk-decompile once with `./Scripts/decompile-sts2.sh`. Output at `.decompiled/` (gitignored, ~3,300 files, ~18s). Re-run after game updates; script skips if fresh.
+
 ### Fallbacks
 
 1. **Search GitHub for other STS2 mods** — community mods are the real documentation.

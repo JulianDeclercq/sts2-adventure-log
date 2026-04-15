@@ -28,3 +28,6 @@ Directory.Build.props
 # OS
 Thumbs.db
 .DS_Store
+
+# Bulk-decompiled sts2.dll output (Scripts/decompile-sts2.sh)
+.decompiled/
