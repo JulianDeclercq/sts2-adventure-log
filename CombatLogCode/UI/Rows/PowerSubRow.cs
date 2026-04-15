@@ -1,6 +1,7 @@
 using CombatLog.CombatLogCode.Events;
 using Godot;
 using MegaCrit.Sts2.Core.Entities.Powers;
+using MegaCrit.Sts2.Core.Nodes.HoverTips;
 
 namespace CombatLog.CombatLogCode.UI.Rows;
 
@@ -74,6 +75,8 @@ public partial class PowerSubRow : HBoxContainer
         {
             foreach (var l in labels) l.AddThemeColorOverride("font_color", HoverColor);
             _highlighter.Highlight(_entry.OwnerCreatureCombatId);
+            if (_entry.Power is not null)
+                try { NHoverTipSet.CreateAndShow(this, _entry.Power.HoverTips); } catch { }
         };
 
         MouseExited += () =>
@@ -81,6 +84,12 @@ public partial class PowerSubRow : HBoxContainer
             for (int i = 0; i < labels.Count; i++)
                 labels[i].AddThemeColorOverride("font_color", originalColors[i]);
             _highlighter.Clear();
+            try { NHoverTipSet.Remove(this); } catch { }
+        };
+
+        TreeExiting += () =>
+        {
+            try { NHoverTipSet.Remove(this); } catch { }
         };
     }
 }

@@ -1,5 +1,6 @@
 using Godot;
 using MegaCrit.Sts2.Core.Entities.Powers;
+using MegaCrit.Sts2.Core.Models;
 
 namespace CombatLog.CombatLogCode.Events;
 
@@ -15,6 +16,7 @@ public sealed record PowerReceivedEvent(
     string? ApplierName,
     uint? ApplierCombatId,
     Texture2D? Icon,
+    PowerModel? Power,
     ulong? OwnerNetId,
     string OwnerName,
     bool IsLocal,

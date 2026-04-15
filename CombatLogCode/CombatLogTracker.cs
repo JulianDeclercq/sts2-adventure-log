@@ -1,6 +1,7 @@
 using CombatLog.CombatLogCode.Events;
 using Godot;
 using MegaCrit.Sts2.Core.Entities.Powers;
+using MegaCrit.Sts2.Core.HoverTips;
 using MegaCrit.Sts2.Core.Models;
 
 namespace CombatLog.CombatLogCode;
@@ -58,12 +59,12 @@ public static class CombatLogTracker
     }
 
     public static void RecordEnergyDelta(
-        int delta, Texture2D? icon, uint? playerCombatId,
+        int delta, Texture2D? icon, IHoverTip? hoverTip, uint? playerCombatId,
         ulong? ownerNetId, string ownerName, bool isLocal)
     {
         _orderCounter++;
         var e = new EnergyDeltaEvent(
-            delta, icon, playerCombatId,
+            delta, icon, hoverTip, playerCombatId,
             ownerNetId, ownerName, isLocal,
             CurrentTurn, _orderCounter, CurrentCombat);
         Append(e);
@@ -74,14 +75,14 @@ public static class CombatLogTracker
         int delta, int newTotal,
         string ownerCreatureName, uint? ownerCreatureCombatId,
         string? applierName, uint? applierCombatId,
-        Texture2D? icon,
+        Texture2D? icon, PowerModel? power,
         ulong? ownerNetId, string ownerName, bool isLocal)
     {
         _orderCounter++;
         var e = new PowerReceivedEvent(
             powerId, powerTitle, type, stackType, delta, newTotal,
             ownerCreatureName, ownerCreatureCombatId,
-            applierName, applierCombatId, icon,
+            applierName, applierCombatId, icon, power,
             ownerNetId, ownerName, isLocal,
             CurrentTurn, _orderCounter, CurrentCombat);
         Append(e);

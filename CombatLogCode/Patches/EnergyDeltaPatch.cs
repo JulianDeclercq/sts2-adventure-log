@@ -4,6 +4,7 @@ using MegaCrit.Sts2.Core.Assets;
 using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.Helpers;
+using MegaCrit.Sts2.Core.HoverTips;
 
 namespace CombatLog.CombatLogCode.Patches;
 
@@ -24,6 +25,7 @@ public static class EnergyDeltaPatch
             var playerCombatId = __1?.Creature?.CombatId;
 
             Texture2D? icon = null;
+            IHoverTip? hoverTip = null;
             try
             {
                 var cardPool = __1?.Character?.CardPool;
@@ -32,14 +34,16 @@ public static class EnergyDeltaPatch
                     var path = EnergyIconHelper.GetPath(cardPool);
                     icon = PreloadManager.Cache.GetTexture2D(path);
                 }
+                if (__1 is not null)
+                    hoverTip = HoverTipFactory.ForEnergy(__1);
             }
             catch (Exception iconEx)
             {
-                GD.PrintErr($"[CombatLog] Error loading energy icon: {iconEx.Message}");
+                GD.PrintErr($"[CombatLog] Error loading energy icon/tooltip: {iconEx.Message}");
             }
 
             CombatLogTracker.RecordEnergyDelta(
-                delta, icon, playerCombatId,
+                delta, icon, hoverTip, playerCombatId,
                 ownerNetId, ownerName, isLocal);
         }
         catch (Exception e)

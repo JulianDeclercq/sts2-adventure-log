@@ -1,5 +1,6 @@
 using CombatLog.CombatLogCode.Events;
 using Godot;
+using MegaCrit.Sts2.Core.Nodes.HoverTips;
 
 namespace CombatLog.CombatLogCode.UI.Rows;
 
@@ -45,12 +46,20 @@ public partial class EnergySubRow : HBoxContainer
         {
             label.AddThemeColorOverride("font_color", HoverColor);
             _highlighter.Highlight(_entry.PlayerCombatId);
+            if (_entry.HoverTip is not null)
+                try { NHoverTipSet.CreateAndShow(this, _entry.HoverTip); } catch { }
         };
 
         MouseExited += () =>
         {
             label.AddThemeColorOverride("font_color", EnergyColor);
             _highlighter.Clear();
+            try { NHoverTipSet.Remove(this); } catch { }
+        };
+
+        TreeExiting += () =>
+        {
+            try { NHoverTipSet.Remove(this); } catch { }
         };
     }
 }

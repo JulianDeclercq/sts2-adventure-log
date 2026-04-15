@@ -1,10 +1,12 @@
 using Godot;
+using MegaCrit.Sts2.Core.HoverTips;
 
 namespace CombatLog.CombatLogCode.Events;
 
 public sealed record EnergyDeltaEvent(
     int Delta,
     Texture2D? Icon,
+    IHoverTip? HoverTip,
     uint? PlayerCombatId,
     ulong? OwnerNetId,
     string OwnerName,
