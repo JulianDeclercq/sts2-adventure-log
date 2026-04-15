@@ -142,7 +142,7 @@ public partial class CombatLogPanel : PanelContainer
             case CardRenderItem c:
                 _list.AddChild(new CardEntryRow(c.Card, c.Damages, _highlighter, OpenInspectScreen));
                 foreach (var g in GroupDamagesByVictim(c.Damages))
-                    _list.AddChild(new DamageSubRow(
+                    _list.AddChild(DamageSubRow.Create(
                         g.VictimName, g.VictimCombatId, c.Card.PlayerCombatId,
                         g.HpLost, g.Blocked, g.Killed, _highlighter));
                 foreach (var p in c.Powers)
