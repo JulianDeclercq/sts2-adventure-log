@@ -26,6 +26,14 @@ public partial class PowerEntryRow : HBoxContainer
         AddThemeConstantOverride("separation", 4);
         MouseFilter = MouseFilterEnum.Stop;
 
+        var labels = new List<Label>();
+        var powerColor = _entry.Type == PowerType.Buff ? BuffColor : DebuffColor;
+
+        if (!string.IsNullOrEmpty(_entry.OwnerCreatureName))
+        {
+            labels.Add(AppendLabel($"\u2192 {_entry.OwnerCreatureName}:", TargetColor));
+        }
+
         if (_entry.Icon is not null)
         {
             var rect = new TextureRect
@@ -37,9 +45,6 @@ public partial class PowerEntryRow : HBoxContainer
             };
             AddChild(rect);
         }
-
-        var labels = new List<Label>();
-        var powerColor = _entry.Type == PowerType.Buff ? BuffColor : DebuffColor;
 
         var nameText = _entry.StackType == PowerStackType.Counter
             ? $"+{_entry.Delta} {_entry.PowerTitle}"
