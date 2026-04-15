@@ -62,8 +62,11 @@ public partial class RelicEntryRow : HBoxContainer
         {
             foreach (var l in labels) l.AddThemeColorOverride("font_color", HoverColor);
             foreach (var id in targetIds) _highlighter.Highlight(id);
-            _hoveredHolder = FindRelicHolder(_entry.RelicId);
-            _hoveredHolder?.OnFocus();
+            if (_entry.IsLocal)
+            {
+                _hoveredHolder = FindRelicHolder(_entry.RelicId);
+                _hoveredHolder?.OnFocus();
+            }
         };
 
         MouseExited += () =>
