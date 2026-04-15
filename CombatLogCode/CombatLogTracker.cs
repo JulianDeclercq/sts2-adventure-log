@@ -57,6 +57,18 @@ public static class CombatLogTracker
         Append(e);
     }
 
+    public static void RecordEnergyDelta(
+        int delta,
+        ulong? ownerNetId, string ownerName, bool isLocal)
+    {
+        _orderCounter++;
+        var e = new EnergyDeltaEvent(
+            delta,
+            ownerNetId, ownerName, isLocal,
+            CurrentTurn, _orderCounter, CurrentCombat);
+        Append(e);
+    }
+
     public static void RecordPowerReceived(
         string powerId, string powerTitle, PowerType type, PowerStackType stackType,
         int delta, int newTotal,

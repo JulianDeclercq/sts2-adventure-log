@@ -155,9 +155,14 @@ public partial class CombatLogPanel : PanelContainer
                 _list.AddChild(new RelicEntryRow(r.Proc, _highlighter));
                 foreach (var p in r.Powers)
                     _list.AddChild(new PowerSubRow(p, _highlighter));
+                foreach (var e in r.EnergyDeltas)
+                    _list.AddChild(new EnergySubRow(e));
                 break;
             case PowerRenderItem p:
                 _list.AddChild(new PowerEntryRow(p.Power, _highlighter));
+                break;
+            case EnergyRenderItem e:
+                _list.AddChild(new EnergySubRow(e.Energy));
                 break;
         }
     }
@@ -201,10 +206,13 @@ public partial class CombatLogPanel : PanelContainer
         : RenderItem(Damage.CombatNumber, Damage.TurnNumber);
     private sealed record RelicRenderItem(
         RelicProcEvent Proc,
-        IReadOnlyList<PowerReceivedEvent> Powers)
+        IReadOnlyList<PowerReceivedEvent> Powers,
+        IReadOnlyList<EnergyDeltaEvent> EnergyDeltas)
         : RenderItem(Proc.CombatNumber, Proc.TurnNumber);
     private sealed record PowerRenderItem(PowerReceivedEvent Power)
         : RenderItem(Power.CombatNumber, Power.TurnNumber);
+    private sealed record EnergyRenderItem(EnergyDeltaEvent Energy)
+        : RenderItem(Energy.CombatNumber, Energy.TurnNumber);
 
     private static List<RenderItem> BuildRenderItems(IReadOnlyList<LogEvent> history)
     {
@@ -228,19 +236,27 @@ public partial class CombatLogPanel : PanelContainer
                 case RelicProcEvent relic:
                 {
                     var powers = new List<PowerReceivedEvent>();
+                    var energies = new List<EnergyDeltaEvent>();
                     while (i + 1 < history.Count
-                           && history[i + 1] is PowerReceivedEvent p
-                           && p.TurnNumber == relic.TurnNumber
-                           && p.CombatNumber == relic.CombatNumber)
+                           && history[i + 1].TurnNumber == relic.TurnNumber
+                           && history[i + 1].CombatNumber == relic.CombatNumber
+                           && history[i + 1] is PowerReceivedEvent or EnergyDeltaEvent)
                     {
-                        powers.Add(p);
+                        switch (history[i + 1])
+                        {
+                            case PowerReceivedEvent p: powers.Add(p); break;
+                            case EnergyDeltaEvent e: energies.Add(e); break;
+                        }
                         i++;
                     }
-                    items.Add(new RelicRenderItem(relic, powers));
+                    items.Add(new RelicRenderItem(relic, powers, energies));
                     break;
                 }
                 case PowerReceivedEvent power:
                     items.Add(new PowerRenderItem(power));
+                    break;
+                case EnergyDeltaEvent energy:
+                    items.Add(new EnergyRenderItem(energy));
                     break;
             }
         }
