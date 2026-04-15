@@ -142,7 +142,7 @@ public partial class CombatLogPanel : PanelContainer
             case CardRenderItem c:
                 _list.AddChild(new CardEntryRow(c.Card, c.Damages, _highlighter, OpenInspectScreen));
                 foreach (var g in GroupDamagesByVictim(c.Damages))
-                    _list.AddChild(new DamageSubRow(
+                    _list.AddChild(DamageSubRow.Create(
                         g.VictimName, g.VictimCombatId, c.Card.PlayerCombatId,
                         g.HpLost, g.Blocked, g.Killed, _highlighter));
                 foreach (var p in c.Powers)
@@ -153,9 +153,16 @@ public partial class CombatLogPanel : PanelContainer
                 break;
             case RelicRenderItem r:
                 _list.AddChild(new RelicEntryRow(r.Proc, _highlighter));
+                foreach (var p in r.Powers)
+                    _list.AddChild(new PowerSubRow(p, _highlighter));
+                foreach (var e in r.EnergyDeltas)
+                    _list.AddChild(new EnergySubRow(e, _highlighter));
                 break;
             case PowerRenderItem p:
                 _list.AddChild(new PowerEntryRow(p.Power, _highlighter));
+                break;
+            case EnergyRenderItem e:
+                _list.AddChild(new EnergySubRow(e.Energy, _highlighter));
                 break;
         }
     }
@@ -197,10 +204,15 @@ public partial class CombatLogPanel : PanelContainer
         : RenderItem(Card.CombatNumber, Card.TurnNumber);
     private sealed record DamageRenderItem(DamageReceivedEvent Damage)
         : RenderItem(Damage.CombatNumber, Damage.TurnNumber);
-    private sealed record RelicRenderItem(RelicProcEvent Proc)
+    private sealed record RelicRenderItem(
+        RelicProcEvent Proc,
+        IReadOnlyList<PowerReceivedEvent> Powers,
+        IReadOnlyList<EnergyDeltaEvent> EnergyDeltas)
         : RenderItem(Proc.CombatNumber, Proc.TurnNumber);
     private sealed record PowerRenderItem(PowerReceivedEvent Power)
         : RenderItem(Power.CombatNumber, Power.TurnNumber);
+    private sealed record EnergyRenderItem(EnergyDeltaEvent Energy)
+        : RenderItem(Energy.CombatNumber, Energy.TurnNumber);
 
     private static List<RenderItem> BuildRenderItems(IReadOnlyList<LogEvent> history)
     {
@@ -222,10 +234,29 @@ public partial class CombatLogPanel : PanelContainer
                     items.Add(new DamageRenderItem(damage));
                     break;
                 case RelicProcEvent relic:
-                    items.Add(new RelicRenderItem(relic));
+                {
+                    var powers = new List<PowerReceivedEvent>();
+                    var energies = new List<EnergyDeltaEvent>();
+                    while (i + 1 < history.Count
+                           && history[i + 1].TurnNumber == relic.TurnNumber
+                           && history[i + 1].CombatNumber == relic.CombatNumber
+                           && history[i + 1] is PowerReceivedEvent or EnergyDeltaEvent)
+                    {
+                        switch (history[i + 1])
+                        {
+                            case PowerReceivedEvent p: powers.Add(p); break;
+                            case EnergyDeltaEvent e: energies.Add(e); break;
+                        }
+                        i++;
+                    }
+                    items.Add(new RelicRenderItem(relic, powers, energies));
                     break;
+                }
                 case PowerReceivedEvent power:
                     items.Add(new PowerRenderItem(power));
+                    break;
+                case EnergyDeltaEvent energy:
+                    items.Add(new EnergyRenderItem(energy));
                     break;
             }
         }

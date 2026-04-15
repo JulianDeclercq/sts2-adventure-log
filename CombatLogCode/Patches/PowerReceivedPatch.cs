@@ -48,7 +48,7 @@ public static class PowerReceivedPatch
                 delta, newTotal,
                 ownerCreatureName, ownerCreatureCombatId,
                 applierName, applierCombatId,
-                icon,
+                icon, power,
                 ownerNetId, ownerName, isLocal);
         }
         catch (Exception e)

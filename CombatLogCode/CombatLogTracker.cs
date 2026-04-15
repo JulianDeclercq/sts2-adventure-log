@@ -1,6 +1,7 @@
 using CombatLog.CombatLogCode.Events;
 using Godot;
 using MegaCrit.Sts2.Core.Entities.Powers;
+using MegaCrit.Sts2.Core.HoverTips;
 using MegaCrit.Sts2.Core.Models;
 
 namespace CombatLog.CombatLogCode;
@@ -12,6 +13,7 @@ public static class CombatLogTracker
     public static int CurrentCombat { get; set; } = 0;
 
     private static int _orderCounter;
+    private static bool _firstPlayerTurn;
 
     public static void RecordCardPlay(
         string cardName, CardModel? card,
@@ -56,19 +58,31 @@ public static class CombatLogTracker
         Append(e);
     }
 
+    public static void RecordEnergyDelta(
+        int delta, Texture2D? icon, IHoverTip? hoverTip, uint? playerCombatId,
+        ulong? ownerNetId, string ownerName, bool isLocal)
+    {
+        _orderCounter++;
+        var e = new EnergyDeltaEvent(
+            delta, icon, hoverTip, playerCombatId,
+            ownerNetId, ownerName, isLocal,
+            CurrentTurn, _orderCounter, CurrentCombat);
+        Append(e);
+    }
+
     public static void RecordPowerReceived(
         string powerId, string powerTitle, PowerType type, PowerStackType stackType,
         int delta, int newTotal,
         string ownerCreatureName, uint? ownerCreatureCombatId,
         string? applierName, uint? applierCombatId,
-        Texture2D? icon,
+        Texture2D? icon, PowerModel? power,
         ulong? ownerNetId, string ownerName, bool isLocal)
     {
         _orderCounter++;
         var e = new PowerReceivedEvent(
             powerId, powerTitle, type, stackType, delta, newTotal,
             ownerCreatureName, ownerCreatureCombatId,
-            applierName, applierCombatId, icon,
+            applierName, applierCombatId, icon, power,
             ownerNetId, ownerName, isLocal,
             CurrentTurn, _orderCounter, CurrentCombat);
         Append(e);
@@ -82,7 +96,10 @@ public static class CombatLogTracker
 
     public static void OnNewTurn()
     {
-        CurrentTurn++;
+        // First SetupPlayerTurn of a combat keeps Turn 0 so start-of-combat relic procs
+        // and first-turn procs land in the same bucket.
+        if (_firstPlayerTurn) _firstPlayerTurn = false;
+        else CurrentTurn++;
         _orderCounter = 0;
     }
 
@@ -91,6 +108,9 @@ public static class CombatLogTracker
         CurrentCombat++;
         CurrentTurn = 0;
         _orderCounter = 0;
+        _firstPlayerTurn = true;
+        History.Clear();
+        OnHistoryChanged?.Invoke();
     }
 
     public static void Clear()

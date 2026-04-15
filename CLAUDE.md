@@ -181,6 +181,21 @@ When the user shows a screenshot of an existing game UI component and asks to ma
 
 **Example:** When asked to match the Compendium run history card icons, the right first move is finding and instantiating `NTinyCard` — not loading type icon PNGs.
 
+**In-tree example — damage sub rows reuse `NStatEntry`:**
+`CombatLogCode/UI/Rows/DamageSubRow.cs` instantiates the stats-screen row scene (`res://scenes/screens/stats_screen/stats_screen_section.tscn`) and writes "→ Victim: -N HP (M blocked)" into the top label (BBCode for per-segment color). `_bottomLabel` is hidden (different authored font size) and `_icon` is hidden (no icon needed). Inherits MegaRichTextLabel font and focus-tween for free.
+
+```csharp
+var entry = PreloadManager.Cache.GetScene(NStatEntry.ScenePath)
+    .Instantiate<NStatEntry>();
+entry.Ready += () => {
+    entry._icon.Visible = false;
+    entry._bottomLabel.Visible = false;
+    entry.SetTopText(bbcodeEncodedLine);  // must be after Ready — labels are wired in _Ready
+};
+```
+
+Full inventory of reusable game list/row UIs in `docs/ui-reuse-options.md`.
+
 ## Known Gotchas
 
 1. **`CombatManager.StartTurn` fires twice per round** — once for player, once for enemy. Use `SetupPlayerTurn` for player-only turn tracking.

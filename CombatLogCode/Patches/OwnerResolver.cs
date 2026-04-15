@@ -14,7 +14,13 @@ public static class OwnerResolver
 
         try
         {
-            var netService = RunManager.Instance?.NetService;
+            var runManager = RunManager.Instance;
+            if (runManager is null) return;
+
+            // Singleplayer / fake-MP: no remote players — trust the owner as local.
+            if (runManager.IsSinglePlayerOrFakeMultiplayer) return;
+
+            var netService = runManager.NetService;
             if (netService is null) return;
 
             var resolved = PlatformUtil.GetPlayerName(netService.Platform, netId.Value);
