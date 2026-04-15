@@ -1,53 +1,64 @@
-using MegaCrit.Sts2.Core.Assets;
-using MegaCrit.Sts2.Core.Nodes.Screens.StatsScreen;
+using Godot;
 
 namespace CombatLog.CombatLogCode.UI.Rows;
 
-internal static class DamageSubRow
+public partial class DamageSubRow : HBoxContainer
 {
-    // Kept in sync with DamageColors for the BBCode-encoded SetBottomText payload.
-    private const string HpLostHex = "#E64D4D";
-    private const string BlockedHex = "#99B3E6";
-    private const string NeutralHex = "#CCCCCC";
+    private static readonly Color VictimColor = new(0.7f, 0.6f, 0.5f);
 
-    public static NStatEntry Create(
+    private readonly string _victimName;
+    private readonly uint? _victimCombatId;
+    private readonly uint? _sourceCombatId;
+    private readonly int _hpLost;
+    private readonly int _blocked;
+    private readonly bool _killed;
+    private readonly CreatureHighlighter _highlighter;
+
+    public DamageSubRow(
         string victimName, uint? victimCombatId, uint? sourceCombatId,
         int hpLost, int blocked, bool killed,
         CreatureHighlighter highlighter)
     {
-        var entry = PreloadManager.Cache.GetScene(NStatEntry.ScenePath)
-            .Instantiate<NStatEntry>();
-
-        entry.Ready += () =>
-        {
-            entry._icon.Visible = false;
-            entry._bottomLabel.Visible = false;
-            entry.SetTopText($"→ {victimName}: {BuildDamageLine(hpLost, blocked, killed)}");
-        };
-
-        entry.MouseEntered += () =>
-        {
-            highlighter.Highlight(sourceCombatId);
-            highlighter.Highlight(victimCombatId);
-        };
-        entry.MouseExited += () => highlighter.Clear();
-
-        return entry;
+        _victimName = victimName;
+        _victimCombatId = victimCombatId;
+        _sourceCombatId = sourceCombatId;
+        _hpLost = hpLost;
+        _blocked = blocked;
+        _killed = killed;
+        _highlighter = highlighter;
     }
 
-    private static string BuildDamageLine(int hpLost, int blocked, bool killed)
+    public override void _Ready()
     {
-        if (hpLost == 0 && blocked == 0 && !killed)
-            return $"[color={NeutralHex}]no damage[/color]";
+        AddThemeConstantOverride("separation", 4);
+        MouseFilter = MouseFilterEnum.Stop;
 
-        var parts = new List<string>();
-        if (hpLost > 0) parts.Add($"[color={HpLostHex}]-{hpLost} HP[/color]");
-        if (blocked > 0)
+        AddChild(new Label { Text = "    " });
+
+        var labels = new List<Label>();
+
+        var victimLabel = new Label();
+        victimLabel.Text = $"→ {_victimName}:";
+        victimLabel.AddThemeColorOverride("font_color", VictimColor);
+        AddChild(victimLabel);
+        labels.Add(victimLabel);
+
+        labels.AddRange(DamageColors.AppendDamageLabels(this, _hpLost, _blocked, _killed));
+
+        var originalColors = labels.Select(l => l.GetThemeColor("font_color")).ToList();
+
+        MouseEntered += () =>
         {
-            var segment = $"[color={BlockedHex}]{blocked} blocked[/color]";
-            parts.Add(hpLost > 0 ? $"({segment})" : segment);
-        }
-        if (killed) parts.Add($"[color={HpLostHex}]💀[/color]");
-        return string.Join(" ", parts);
+            foreach (var l in labels) l.AddThemeColorOverride("font_color", DamageColors.Hover);
+            _highlighter.Highlight(_sourceCombatId);
+            _highlighter.Highlight(_victimCombatId);
+        };
+
+        MouseExited += () =>
+        {
+            for (int i = 0; i < labels.Count; i++)
+                labels[i].AddThemeColorOverride("font_color", originalColors[i]);
+            _highlighter.Clear();
+        };
     }
 }

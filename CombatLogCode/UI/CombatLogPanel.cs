@@ -142,7 +142,7 @@ public partial class CombatLogPanel : PanelContainer
             case CardRenderItem c:
                 _list.AddChild(new CardEntryRow(c.Card, c.Damages, _highlighter, OpenInspectScreen));
                 foreach (var g in GroupDamagesByVictim(c.Damages))
-                    _list.AddChild(DamageSubRow.Create(
+                    _list.AddChild(new DamageSubRow(
                         g.VictimName, g.VictimCombatId, c.Card.PlayerCombatId,
                         g.HpLost, g.Blocked, g.Killed, _highlighter));
                 foreach (var p in c.Powers)
@@ -153,6 +153,11 @@ public partial class CombatLogPanel : PanelContainer
                 break;
             case RelicRenderItem r:
                 _list.AddChild(new RelicEntryRow(r.Proc, _highlighter));
+                var relicSource = r.Damages.FirstOrDefault()?.SourceCombatId;
+                foreach (var g in GroupDamagesByVictim(r.Damages))
+                    _list.AddChild(new DamageSubRow(
+                        g.VictimName, g.VictimCombatId, relicSource,
+                        g.HpLost, g.Blocked, g.Killed, _highlighter));
                 foreach (var p in r.Powers)
                     _list.AddChild(new PowerSubRow(p, _highlighter));
                 foreach (var e in r.EnergyDeltas)
@@ -206,6 +211,7 @@ public partial class CombatLogPanel : PanelContainer
         : RenderItem(Damage.CombatNumber, Damage.TurnNumber);
     private sealed record RelicRenderItem(
         RelicProcEvent Proc,
+        IReadOnlyList<DamageReceivedEvent> Damages,
         IReadOnlyList<PowerReceivedEvent> Powers,
         IReadOnlyList<EnergyDeltaEvent> EnergyDeltas)
         : RenderItem(Proc.CombatNumber, Proc.TurnNumber);
@@ -235,6 +241,18 @@ public partial class CombatLogPanel : PanelContainer
                     break;
                 case RelicProcEvent relic:
                 {
+                    // Game emits damage before the relic flashes, so orphan damage rows
+                    // (no card source, same turn) preceding the proc belong to this relic.
+                    var damages = new List<DamageReceivedEvent>();
+                    while (items.Count > 0
+                           && items[^1] is DamageRenderItem tail
+                           && tail.TurnNumber == relic.TurnNumber
+                           && tail.CombatNumber == relic.CombatNumber
+                           && string.IsNullOrEmpty(tail.Damage.SourceCardName))
+                    {
+                        damages.Insert(0, tail.Damage);
+                        items.RemoveAt(items.Count - 1);
+                    }
                     var powers = new List<PowerReceivedEvent>();
                     var energies = new List<EnergyDeltaEvent>();
                     while (i + 1 < history.Count
@@ -249,7 +267,7 @@ public partial class CombatLogPanel : PanelContainer
                         }
                         i++;
                     }
-                    items.Add(new RelicRenderItem(relic, powers, energies));
+                    items.Add(new RelicRenderItem(relic, damages, powers, energies));
                     break;
                 }
                 case PowerReceivedEvent power:
