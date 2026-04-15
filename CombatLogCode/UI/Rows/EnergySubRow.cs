@@ -47,7 +47,12 @@ public partial class EnergySubRow : HBoxContainer
             label.AddThemeColorOverride("font_color", HoverColor);
             _highlighter.Highlight(_entry.PlayerCombatId);
             if (_entry.HoverTip is not null)
-                try { NHoverTipSet.CreateAndShow(this, _entry.HoverTip); } catch { }
+                try
+                {
+                    var tip = NHoverTipSet.CreateAndShow(this, _entry.HoverTip);
+                    if (tip is not null) HoverTipHelper.PositionLeftOfCursor(this, tip);
+                }
+                catch { }
         };
 
         MouseExited += () =>

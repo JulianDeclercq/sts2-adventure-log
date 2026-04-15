@@ -76,7 +76,12 @@ public partial class PowerSubRow : HBoxContainer
             foreach (var l in labels) l.AddThemeColorOverride("font_color", HoverColor);
             _highlighter.Highlight(_entry.OwnerCreatureCombatId);
             if (_entry.Power is not null)
-                try { NHoverTipSet.CreateAndShow(this, _entry.Power.HoverTips); } catch { }
+                try
+                {
+                    var tip = NHoverTipSet.CreateAndShow(this, _entry.Power.HoverTips);
+                    if (tip is not null) HoverTipHelper.PositionLeftOfCursor(this, tip);
+                }
+                catch { }
         };
 
         MouseExited += () =>
