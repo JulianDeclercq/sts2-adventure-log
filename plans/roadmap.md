@@ -39,7 +39,7 @@ Mature combat log mod. Known features (1.6.0):
 - Hover card row: native game tooltip + `CreatureHighlighter` reticle on owner + target
 - Click card row: opens native `NInspectCardScreen`
 - UI split into `UI/Rows/{CardEntryRow, DamageEntryRow, DamageSubRow, RelicEntryRow}.cs`; `CombatLogPanel.cs` is container/refresh only (debounced)
-- Skip splash logo patch; singleplayer-test launches with `-fastcontinue`
+- Skip splash logo patch
 - `affects_gameplay: false` → MP-safe (mod allowed without version match)
 
 ## MP Hook Verification (non-blocker)
@@ -91,7 +91,7 @@ Self-targets dropped (parameterless `Flash()` targets `Owner.Creature` redundant
 - `Patches/DamageReceivedPatch.cs` (uses `CombatHistory.DamageReceived`)
 - `Patches/RelicProcPatch.cs` (uses `RelicModel.Flash`)
 - `Patches/OwnerResolver.cs` — shared NetId → display name helper
-- `Patches/CombatPatch.cs`, `UiInjectionPatch.cs`, `SkipSplashPatch.cs`, `FastContinuePatch.cs`
+- `Patches/CombatPatch.cs`, `UiInjectionPatch.cs`, `SkipSplashPatch.cs`
 
 ### UI refactor — done
 - `UI/Rows/CardEntryRow.cs`
