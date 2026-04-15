@@ -204,16 +204,50 @@ When the user shows a screenshot of an existing game UI component and asks to ma
 
 ## How to Research STS2 APIs
 
-When you need to find how a game API works (e.g., "how do I get X property from Y class"):
+Split by question type — data vs code. Pick the right tool first.
 
-1. **Use `ilspycmd` to decompile the class** — this is the fastest, most reliable method. `ilspycmd` is installed globally. Always start here before guessing property names or grepping binary strings.
-   ```bash
-   ilspycmd "path/to/sts2.dll" -t "MegaCrit.Sts2.Core.Nodes.Cards.NTinyCard"
-   ```
-   The publicized DLL is at: `.godot/mono/temp/obj/Debug/PublicizedAssemblies/sts2.*/sts2.dll`
-2. **Search GitHub for other STS2 mods** — community mods are the real documentation.
-3. **Check the official wikis** — but note BaseLib docs are often incomplete (e.g., CardModel docs are "TODO")
-4. **If a property isn't accessible via publicizer**, use Harmony's `Traverse.Create(instance).Property<T>("PropName").Value`
+### Data lookups → Spire Codex first
+
+Use [spire-codex.com](https://spire-codex.com) REST API when the question is **"what data exists"**: card IDs, stats, costs, rarities, localization keys, resource paths, monster HP/moves/intents, encounter comps, act placement, relic pools, event trees, ascension scaling, changelog diffs across versions.
+
+```bash
+curl -s "https://spire-codex.com/api/cards/{id}?lang=eng"
+curl -s "https://spire-codex.com/api/monsters?act=2"
+curl -s "https://spire-codex.com/api/relics/{id}"
+```
+
+GZip-compressed, 5-min cached. No decompile tax. Covers 14 languages.
+
+### Code/API surface → ilspycmd
+
+Use `ilspycmd` when the question is **"how does code run"**: method signatures, Harmony patch targets, publicizer gotchas, property accessors, hook state machines, Node class internals (`NTinyCard.SetCard`, `NCreature.Visuals`), lifecycle timing.
+
+```bash
+ilspycmd "path/to/sts2.dll" -t "MegaCrit.Sts2.Core.Nodes.Cards.NTinyCard"
+```
+
+Publicized DLL at: `.godot/mono/temp/obj/Debug/PublicizedAssemblies/sts2.*/sts2.dll`
+
+Per gotcha #10 — when using a game component, decompile a game class that already uses it (e.g., `NDeckHistoryEntry.Reload()` for `NTinyCard`) to see exact setup pattern.
+
+### Fallbacks
+
+1. **Search GitHub for other STS2 mods** — community mods are the real documentation.
+2. **Official wikis** — BaseLib docs often incomplete (CardModel docs are "TODO").
+3. **Property not accessible via publicizer** → `Traverse.Create(instance).Property<T>("PropName").Value`.
+
+### Quick routing cheatsheet
+
+| Question | Tool |
+|---|---|
+| "What's the ID/cost/damage of card X?" | Spire Codex |
+| "Icon/portrait path for relic Y?" | Spire Codex |
+| "All monsters in act 2 / encounter Z?" | Spire Codex |
+| "Localization key for card X?" | Spire Codex |
+| "How patch `CardModel.OnPlayWrapper`?" | ilspycmd |
+| "What property holds block on `NCreature`?" | ilspycmd |
+| "Which method fires on combat start?" | ilspycmd |
+| "What args does method X take?" | ilspycmd |
 
 ### Reference Mods (known-good API usage examples)
 
