@@ -159,6 +159,8 @@ Useful commands:
 - `showlog` — open live log window
 - `open logs` — open log directory in file explorer
 
+**Fast lookup:** card/relic/power IDs → grep Spire Codex (`curl -s "https://spire-codex.com/api/cards?lang=eng" | jq`). Dev console cmd syntax/args → `docs/dev-console.md` or decompile `MegaCrit.Sts2.Core.DevConsole.ConsoleCommands.*ConsoleCmd` (e.g. `CardConsoleCmd.cs` for `card`).
+
 ## Publicizer Settings
 
 In `.csproj`:

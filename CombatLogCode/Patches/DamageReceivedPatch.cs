@@ -16,6 +16,17 @@ namespace CombatLog.CombatLogCode.Patches;
 [HarmonyPatch(typeof(CombatHistory), nameof(CombatHistory.DamageReceived))]
 public static class DamageReceivedPatch
 {
+    private static readonly HashSet<string> SelfDamagingPowers =
+        new(StringComparer.Ordinal) { "Poison", "Doom", "Constrict" };
+
+    private static string? ResolveSelfDamagingPower(Creature receiver)
+    {
+        foreach (var p in receiver.Powers)
+            if (p.Amount > 0 && SelfDamagingPowers.Contains(p.Id?.Entry ?? ""))
+                return p.Title?.GetFormattedText() ?? p.Id?.Entry;
+        return null;
+    }
+
     [HarmonyPostfix]
     public static void Postfix(CombatState __0, Creature __1, Creature? __2, DamageResult __3, CardModel? __4)
     {
@@ -32,7 +43,7 @@ public static class DamageReceivedPatch
             var sourceCardName = cardSource?.Title;
             var sourceName = !string.IsNullOrEmpty(sourceCardName)
                 ? sourceCardName!
-                : dealer?.Name ?? "";
+                : dealer?.Name ?? ResolveSelfDamagingPower(receiver) ?? "";
 
             CombatLogTracker.RecordDamageReceived(
                 victimName: receiver.Name,

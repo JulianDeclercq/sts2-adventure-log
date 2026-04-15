@@ -1,4 +1,6 @@
 using CombatLog.CombatLogCode.Events;
+using Godot;
+using MegaCrit.Sts2.Core.Entities.Powers;
 using MegaCrit.Sts2.Core.Models;
 
 namespace CombatLog.CombatLogCode;
@@ -49,6 +51,24 @@ public static class CombatLogTracker
         var e = new RelicProcEvent(
             relicName, relicId, relic,
             targetNames, targetCombatIds,
+            ownerNetId, ownerName, isLocal,
+            CurrentTurn, _orderCounter, CurrentCombat);
+        Append(e);
+    }
+
+    public static void RecordPowerReceived(
+        string powerId, string powerTitle, PowerType type, PowerStackType stackType,
+        int delta, int newTotal,
+        string ownerCreatureName, uint? ownerCreatureCombatId,
+        string? applierName, uint? applierCombatId,
+        Texture2D? icon,
+        ulong? ownerNetId, string ownerName, bool isLocal)
+    {
+        _orderCounter++;
+        var e = new PowerReceivedEvent(
+            powerId, powerTitle, type, stackType, delta, newTotal,
+            ownerCreatureName, ownerCreatureCombatId,
+            applierName, applierCombatId, icon,
             ownerNetId, ownerName, isLocal,
             CurrentTurn, _orderCounter, CurrentCombat);
         Append(e);

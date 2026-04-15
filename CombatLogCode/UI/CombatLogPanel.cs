@@ -145,12 +145,17 @@ public partial class CombatLogPanel : PanelContainer
                     _list.AddChild(new DamageSubRow(
                         g.VictimName, g.VictimCombatId, c.Card.PlayerCombatId,
                         g.HpLost, g.Blocked, g.Killed, _highlighter));
+                foreach (var p in c.Powers)
+                    _list.AddChild(new PowerSubRow(p, _highlighter));
                 break;
             case DamageRenderItem d:
                 _list.AddChild(new DamageEntryRow(d.Damage, _highlighter));
                 break;
             case RelicRenderItem r:
                 _list.AddChild(new RelicEntryRow(r.Proc, _highlighter));
+                break;
+            case PowerRenderItem p:
+                _list.AddChild(new PowerEntryRow(p.Power, _highlighter));
                 break;
         }
     }
@@ -185,12 +190,17 @@ public partial class CombatLogPanel : PanelContainer
     }
 
     private abstract record RenderItem(int CombatNumber, int TurnNumber);
-    private sealed record CardRenderItem(CardPlayEvent Card, IReadOnlyList<DamageReceivedEvent> Damages)
+    private sealed record CardRenderItem(
+        CardPlayEvent Card,
+        IReadOnlyList<DamageReceivedEvent> Damages,
+        IReadOnlyList<PowerReceivedEvent> Powers)
         : RenderItem(Card.CombatNumber, Card.TurnNumber);
     private sealed record DamageRenderItem(DamageReceivedEvent Damage)
         : RenderItem(Damage.CombatNumber, Damage.TurnNumber);
     private sealed record RelicRenderItem(RelicProcEvent Proc)
         : RenderItem(Proc.CombatNumber, Proc.TurnNumber);
+    private sealed record PowerRenderItem(PowerReceivedEvent Power)
+        : RenderItem(Power.CombatNumber, Power.TurnNumber);
 
     private static List<RenderItem> BuildRenderItems(IReadOnlyList<LogEvent> history)
     {
@@ -202,17 +212,10 @@ public partial class CombatLogPanel : PanelContainer
                 case CardPlayEvent card:
                 {
                     var damages = new List<DamageReceivedEvent>();
-                    while (i + 1 < history.Count
-                           && history[i + 1] is DamageReceivedEvent d
-                           && d.TurnNumber == card.TurnNumber
-                           && d.CombatNumber == card.CombatNumber
-                           && !string.IsNullOrEmpty(d.SourceCardName)
-                           && d.SourceCardName == card.CardName)
-                    {
-                        damages.Add(d);
+                    var powers = new List<PowerReceivedEvent>();
+                    while (i + 1 < history.Count && TryConsumeCardChild(history[i + 1], card, damages, powers))
                         i++;
-                    }
-                    items.Add(new CardRenderItem(card, damages));
+                    items.Add(new CardRenderItem(card, damages, powers));
                     break;
                 }
                 case DamageReceivedEvent damage:
@@ -221,9 +224,33 @@ public partial class CombatLogPanel : PanelContainer
                 case RelicProcEvent relic:
                     items.Add(new RelicRenderItem(relic));
                     break;
+                case PowerReceivedEvent power:
+                    items.Add(new PowerRenderItem(power));
+                    break;
             }
         }
         return items;
+    }
+
+    private static bool TryConsumeCardChild(
+        LogEvent evt, CardPlayEvent card,
+        List<DamageReceivedEvent> damages, List<PowerReceivedEvent> powers)
+    {
+        if (evt.TurnNumber != card.TurnNumber) return false;
+        if (evt.CombatNumber != card.CombatNumber) return false;
+        switch (evt)
+        {
+            case DamageReceivedEvent d
+                when !string.IsNullOrEmpty(d.SourceCardName) && d.SourceCardName == card.CardName:
+                damages.Add(d);
+                return true;
+            case PowerReceivedEvent p
+                when p.ApplierCombatId.HasValue && p.ApplierCombatId == card.PlayerCombatId:
+                powers.Add(p);
+                return true;
+            default:
+                return false;
+        }
     }
 
     private void ScrollToTop() => _scroll.ScrollVertical = 0;
