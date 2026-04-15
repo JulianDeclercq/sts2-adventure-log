@@ -12,6 +12,7 @@ public static class CombatLogTracker
     public static int CurrentCombat { get; set; } = 0;
 
     private static int _orderCounter;
+    private static bool _firstPlayerTurn;
 
     public static void RecordCardPlay(
         string cardName, CardModel? card,
@@ -82,7 +83,10 @@ public static class CombatLogTracker
 
     public static void OnNewTurn()
     {
-        CurrentTurn++;
+        // First SetupPlayerTurn of a combat keeps Turn 0 so start-of-combat relic procs
+        // and first-turn procs land in the same bucket.
+        if (_firstPlayerTurn) _firstPlayerTurn = false;
+        else CurrentTurn++;
         _orderCounter = 0;
     }
 
@@ -91,6 +95,7 @@ public static class CombatLogTracker
         CurrentCombat++;
         CurrentTurn = 0;
         _orderCounter = 0;
+        _firstPlayerTurn = true;
         History.Clear();
         OnHistoryChanged?.Invoke();
     }
