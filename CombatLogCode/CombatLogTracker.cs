@@ -91,6 +91,8 @@ public static class CombatLogTracker
         CurrentCombat++;
         CurrentTurn = 0;
         _orderCounter = 0;
+        History.Clear();
+        OnHistoryChanged?.Invoke();
     }
 
     public static void Clear()
