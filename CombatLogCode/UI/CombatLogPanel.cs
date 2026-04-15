@@ -152,6 +152,9 @@ public partial class CombatLogPanel : PanelContainer
             case RelicRenderItem r:
                 _list.AddChild(new RelicEntryRow(r.Proc, _highlighter));
                 break;
+            case PowerRenderItem p:
+                _list.AddChild(new PowerEntryRow(p.Power, _highlighter));
+                break;
         }
     }
 
@@ -191,6 +194,8 @@ public partial class CombatLogPanel : PanelContainer
         : RenderItem(Damage.CombatNumber, Damage.TurnNumber);
     private sealed record RelicRenderItem(RelicProcEvent Proc)
         : RenderItem(Proc.CombatNumber, Proc.TurnNumber);
+    private sealed record PowerRenderItem(PowerReceivedEvent Power)
+        : RenderItem(Power.CombatNumber, Power.TurnNumber);
 
     private static List<RenderItem> BuildRenderItems(IReadOnlyList<LogEvent> history)
     {
@@ -220,6 +225,9 @@ public partial class CombatLogPanel : PanelContainer
                     break;
                 case RelicProcEvent relic:
                     items.Add(new RelicRenderItem(relic));
+                    break;
+                case PowerReceivedEvent power:
+                    items.Add(new PowerRenderItem(power));
                     break;
             }
         }
