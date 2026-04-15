@@ -2,6 +2,7 @@ using Godot;
 using HarmonyLib;
 using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Combat.History;
+using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Entities.Creatures;
 using MegaCrit.Sts2.Core.Models;
 
@@ -10,6 +11,11 @@ namespace CombatLog.CombatLogCode.Patches;
 [HarmonyPatch(typeof(CombatHistory), nameof(CombatHistory.PowerReceived))]
 public static class PowerReceivedPatch
 {
+    // PowerCmd.Apply fires History.PowerReceived BEFORE power.ApplyInternal sets
+    // power.Owner = target, so on first application power.Owner is null here. Stash
+    // the target from the Apply prefix below and read it as fallback.
+    internal static Creature? PendingApplyTarget;
+
     [HarmonyPostfix]
     public static void Postfix(CombatState __0, PowerModel __1, decimal __2, Creature? __3)
     {
@@ -33,7 +39,8 @@ public static class PowerReceivedPatch
             var stackType = power.StackType;
             var icon = power.Icon;
 
-            var ownerCreature = power.Owner;
+            var ownerCreature = power.Owner ?? PendingApplyTarget;
+            PendingApplyTarget = null;
             var ownerCreatureName = ownerCreature?.Name ?? "";
             var ownerCreatureCombatId = ownerCreature?.CombatId;
 
@@ -55,5 +62,16 @@ public static class PowerReceivedPatch
         {
             GD.PrintErr($"[CombatLog] Error recording power received: {e.Message}");
         }
+    }
+}
+
+[HarmonyPatch(typeof(PowerCmd), nameof(PowerCmd.Apply),
+    new[] { typeof(PowerModel), typeof(Creature), typeof(decimal), typeof(Creature), typeof(CardModel), typeof(bool) })]
+public static class PowerApplyTargetStashPatch
+{
+    [HarmonyPrefix]
+    public static void Prefix(Creature __1)
+    {
+        PowerReceivedPatch.PendingApplyTarget = __1;
     }
 }
