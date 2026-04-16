@@ -121,6 +121,18 @@ Each step: build, manual test (solo AND 2-player MP), commit. Keep `affects_game
 
 **Outstanding MP verification:** cross-machine 2-player test of damage + relic events still pending (same-machine `godot.log` contention blocked it during card-play check). Run before step 4 commits.
 
+## Bugfixes (from 2026-04-16 MP test)
+
+- Die For You and Territorial cards have no tooltip on hover
+- Cards that recall from discard (e.g., resurrect/recall effects) should show which card was brought back
+- Vulnerable hover shows no status effect tooltip, but Doom/Weak do — likely because Vulnerable displays post-total stacks
+- Last hit that kills a creature isn't logged
+- Potions that give cards should log which card was taken
+- Card rewards taken should be shown in log
+- Teammate relics should show their tooltip on hover (not in own RelicBar, so native `RelicBar.OnFocus` misses them)
+- Strength changes like "+-8 Strength" should render as "-8 Strength", colored red for negative
+- Relic hover for own relics appears broken in MP — investigate whether `RelicBar.OnFocus` targets wrong bar
+
 ## Non-Goals (for now)
 
 - Post-game breakdown screen
