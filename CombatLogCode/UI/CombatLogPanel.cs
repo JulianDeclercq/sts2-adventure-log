@@ -37,10 +37,22 @@ public partial class CombatLogPanel : Control
         const float defaultWidth = 420f;
         const float defaultHeight = 260f;
         AnchorLeft = 0; AnchorRight = 0; AnchorTop = 0; AnchorBottom = 0;
-        OffsetRight = viewport.X - 10;
-        OffsetLeft = OffsetRight - defaultWidth;
-        OffsetTop = viewport.Y * 0.07f + 15;
-        OffsetBottom = OffsetTop + defaultHeight;
+
+        var saved = PanelSettings.Load();
+        if (saved is not null)
+        {
+            OffsetLeft = saved.OffsetLeft;
+            OffsetRight = saved.OffsetRight;
+            OffsetTop = saved.OffsetTop;
+            OffsetBottom = saved.OffsetBottom;
+        }
+        else
+        {
+            OffsetRight = viewport.X - 10;
+            OffsetLeft = OffsetRight - defaultWidth;
+            OffsetTop = viewport.Y * 0.07f + 15;
+            OffsetBottom = OffsetTop + defaultHeight;
+        }
         CustomMinimumSize = Vector2.Zero;
         MouseFilter = MouseFilterEnum.Stop;
         MouseDefaultCursorShape = CursorShape.Move;
@@ -130,6 +142,7 @@ public partial class CombatLogPanel : Control
                 }
                 else
                 {
+                    if (_dragging) SavePosition();
                     _dragging = false;
                 }
                 AcceptEvent();
@@ -154,6 +167,9 @@ public partial class CombatLogPanel : Control
         Visible = _isShown;
         if (_isShown) RefreshList();
     }
+
+    public void SavePosition() =>
+        PanelSettings.Save(new PanelSettings.Data(OffsetLeft, OffsetRight, OffsetTop, OffsetBottom));
 
     private void OnHistoryChanged()
     {

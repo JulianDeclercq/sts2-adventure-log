@@ -102,6 +102,7 @@ public partial class PanelEdgeHandle : Control
                 }
                 else
                 {
+                    if (_dragging) _panel.SavePosition();
                     _dragging = false;
                 }
                 AcceptEvent();
