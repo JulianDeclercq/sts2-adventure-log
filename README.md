@@ -58,4 +58,4 @@ Auto-deploys the DLL + manifest to the game's `mods/CombatLog/` folder. Game pat
 
 ## License
 
-MIT.
+MIT — see [LICENSE](./LICENSE).
