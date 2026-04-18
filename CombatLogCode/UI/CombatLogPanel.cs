@@ -14,7 +14,7 @@ public partial class CombatLogPanel : Control
 {
     private VBoxContainer _list = null!;
     private ScrollContainer _scroll = null!;
-    private Label _header = null!;
+    private Label _status = null!;
     private CreatureHighlighter _highlighter = null!;
     private bool _isShown;
     private int _lastKnownCount;
@@ -57,14 +57,6 @@ public partial class CombatLogPanel : Control
         var vbox = new VBoxContainer();
         inner.AddChild(vbox);
 
-        _header = new Label();
-        _header.Text = "Combat Log (F to toggle)";
-        _header.HorizontalAlignment = HorizontalAlignment.Center;
-        _header.AddThemeColorOverride("font_color", new Color(0.9f, 0.8f, 0.3f));
-        vbox.AddChild(_header);
-
-        vbox.AddChild(new HSeparator());
-
         _scroll = new ScrollContainer();
         _scroll.SizeFlagsVertical = SizeFlags.ExpandFill;
         vbox.AddChild(_scroll);
@@ -72,6 +64,15 @@ public partial class CombatLogPanel : Control
         _list = new VBoxContainer();
         _list.SizeFlagsHorizontal = SizeFlags.ExpandFill;
         _scroll.AddChild(_list);
+
+        vbox.AddChild(new HSeparator());
+
+        _status = new Label();
+        _status.HorizontalAlignment = HorizontalAlignment.Center;
+        _status.AddThemeColorOverride("font_color", new Color(0.6f, 0.6f, 0.7f));
+        _status.AddThemeFontSizeOverride("font_size", 11);
+        vbox.AddChild(_status);
+        UpdateStatus();
 
         AddChild(new PanelEdgeHandle { Kind = PanelEdgeHandle.Edge.Left });
         AddChild(new PanelEdgeHandle { Kind = PanelEdgeHandle.Edge.Top });
@@ -110,8 +111,17 @@ public partial class CombatLogPanel : Control
         if (_isShown) RefreshList();
     }
 
+    private void UpdateStatus()
+    {
+        var combat = CombatLogTracker.CurrentCombat;
+        _status.Text = combat > 0
+            ? $"Combat {combat}  ·  F to toggle"
+            : "F to toggle";
+    }
+
     private void RefreshList()
     {
+        UpdateStatus();
         var history = CombatLogTracker.History;
         if (history.Count == _lastKnownCount) return;
 
@@ -120,19 +130,11 @@ public partial class CombatLogPanel : Control
 
         var items = BuildRenderItems(history);
 
-        int lastCombat = -1;
         int lastTurn = -1;
 
         for (int i = items.Count - 1; i >= 0; i--)
         {
             var item = items[i];
-
-            if (item.CombatNumber != lastCombat)
-            {
-                lastCombat = item.CombatNumber;
-                lastTurn = -1;
-                _list.AddChild(BuildCombatHeader(item.CombatNumber));
-            }
 
             if (item.TurnNumber != lastTurn)
             {
@@ -318,15 +320,6 @@ public partial class CombatLogPanel : Control
     }
 
     private void ScrollToTop() => _scroll.ScrollVertical = 0;
-
-    private static Label BuildCombatHeader(int combatNumber)
-    {
-        var label = new Label();
-        label.Text = $"--- Combat {combatNumber} ---";
-        label.HorizontalAlignment = HorizontalAlignment.Center;
-        label.AddThemeColorOverride("font_color", new Color(0.6f, 0.8f, 1.0f));
-        return label;
-    }
 
     private static Label BuildTurnHeader(int turnNumber)
     {
