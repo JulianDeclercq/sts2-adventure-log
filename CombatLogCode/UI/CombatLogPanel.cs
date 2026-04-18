@@ -10,7 +10,7 @@ namespace CombatLog.CombatLogCode.UI;
 /// Toggleable panel (F) showing events logged during the run.
 /// Injected by UiInjectionPatch. Dispatches each LogEvent to its row type.
 /// </summary>
-public partial class CombatLogPanel : PanelContainer
+public partial class CombatLogPanel : Control
 {
     private VBoxContainer _list = null!;
     private ScrollContainer _scroll = null!;
@@ -37,6 +37,7 @@ public partial class CombatLogPanel : PanelContainer
         OffsetTop = 0;
         OffsetBottom = 0;
         GrowHorizontal = GrowDirection.Begin;
+        MouseFilter = MouseFilterEnum.Ignore;
 
         var styleBox = new StyleBoxFlat();
         styleBox.BgColor = new Color(0.05f, 0.05f, 0.1f, 0.85f);
@@ -44,10 +45,17 @@ public partial class CombatLogPanel : PanelContainer
         styleBox.SetBorderWidthAll(2);
         styleBox.SetCornerRadiusAll(8);
         styleBox.SetContentMarginAll(10);
-        AddThemeStyleboxOverride("panel", styleBox);
+
+        var inner = new PanelContainer();
+        inner.AnchorLeft = 0; inner.AnchorRight = 1;
+        inner.AnchorTop = 0; inner.AnchorBottom = 1;
+        inner.OffsetLeft = 0; inner.OffsetRight = 0;
+        inner.OffsetTop = 0; inner.OffsetBottom = 0;
+        inner.AddThemeStyleboxOverride("panel", styleBox);
+        AddChild(inner);
 
         var vbox = new VBoxContainer();
-        AddChild(vbox);
+        inner.AddChild(vbox);
 
         _header = new Label();
         _header.Text = "Combat Log (F to toggle)";
@@ -65,7 +73,9 @@ public partial class CombatLogPanel : PanelContainer
         _list.SizeFlagsHorizontal = SizeFlags.ExpandFill;
         _scroll.AddChild(_list);
 
-        AddChild(new PanelResizeHandle());
+        AddChild(new PanelEdgeHandle { Kind = PanelEdgeHandle.Edge.Left });
+        AddChild(new PanelEdgeHandle { Kind = PanelEdgeHandle.Edge.Top });
+        AddChild(new PanelEdgeHandle { Kind = PanelEdgeHandle.Edge.Bottom });
 
         Visible = false;
         _isShown = false;
