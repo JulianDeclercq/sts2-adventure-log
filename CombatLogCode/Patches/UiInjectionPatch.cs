@@ -1,20 +1,21 @@
 using CombatLog.CombatLogCode.UI;
 using Godot;
 using HarmonyLib;
+using MegaCrit.Sts2.Core.Nodes;
 using MegaCrit.Sts2.Core.Nodes.Combat;
 using MegaCrit.Sts2.Core.Nodes.Rooms;
 
 namespace CombatLog.CombatLogCode.Patches;
 
 /// <summary>
-/// Injects the CombatLogPanel and HistoryButton into the scene tree when a combat room node is ready.
-/// NCombatRoom is the Godot Node version of the combat room.
+/// Injects the CombatLogPanel under NRun so it lives for the whole run (map + combat + events)
+/// and is destroyed automatically when the run ends / returns to the main menu.
 /// </summary>
-[HarmonyPatch(typeof(NCombatRoom), "_Ready")]
-public static class UiInjectionPatch
+[HarmonyPatch(typeof(NRun), "_Ready")]
+public static class PanelInjectionPatch
 {
     [HarmonyPostfix]
-    public static void Postfix(NCombatRoom __instance)
+    public static void Postfix(NRun __instance)
     {
         try
         {
@@ -22,15 +23,25 @@ public static class UiInjectionPatch
 
             var panel = new CombatLogPanel();
             panel.Name = "CombatLogPanel";
-
-            var root = __instance.GetTree()?.Root;
-            root?.CallDeferred(Node.MethodName.AddChild, panel);
+            __instance.CallDeferred(Node.MethodName.AddChild, panel);
         }
         catch (Exception e)
         {
             GD.PrintErr($"[CombatLog] Error injecting combat log panel: {e.Message}");
         }
+    }
+}
 
+/// <summary>
+/// Injects the HistoryButton next to the discard pile button when a combat room is ready.
+/// Combat-only UI; the panel itself already exists (injected at run start).
+/// </summary>
+[HarmonyPatch(typeof(NCombatRoom), "_Ready")]
+public static class HistoryButtonInjectionPatch
+{
+    [HarmonyPostfix]
+    public static void Postfix(NCombatRoom __instance)
+    {
         try
         {
             var discardBtn = __instance
