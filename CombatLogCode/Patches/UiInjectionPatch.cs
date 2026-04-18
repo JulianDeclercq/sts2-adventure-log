@@ -1,7 +1,6 @@
 using CombatLog.CombatLogCode.UI;
 using Godot;
 using HarmonyLib;
-using MegaCrit.Sts2.Core.HoverTips;
 using MegaCrit.Sts2.Core.Nodes.Combat;
 using MegaCrit.Sts2.Core.Nodes.Rooms;
 

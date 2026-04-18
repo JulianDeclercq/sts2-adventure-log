@@ -6,11 +6,6 @@ namespace CombatLog.CombatLogCode.UI.Rows;
 
 public partial class PowerEntryRow : HBoxContainer
 {
-    private static readonly Color BuffColor = new(0.4f, 0.9f, 0.4f);
-    private static readonly Color DebuffColor = new(0.85f, 0.35f, 0.85f);
-    private static readonly Color NegativeColor = new(0.9f, 0.4f, 0.4f);
-    private static readonly Color TargetColor = new(0.7f, 0.6f, 0.5f);
-    private static readonly Color HoverColor = new(1.0f, 1.0f, 0.6f);
     private const float IconSize = 20;
 
     private readonly PowerReceivedEvent _entry;
@@ -30,12 +25,12 @@ public partial class PowerEntryRow : HBoxContainer
         var labels = new List<Label>();
         var isNegative = _entry.StackType == PowerStackType.Counter && _entry.Delta < 0;
         var powerColor = isNegative
-            ? NegativeColor
-            : (_entry.Type == PowerType.Buff ? BuffColor : DebuffColor);
+            ? PowerColors.Negative
+            : (_entry.Type == PowerType.Buff ? PowerColors.Buff : PowerColors.Debuff);
 
         if (!string.IsNullOrEmpty(_entry.OwnerCreatureName))
         {
-            labels.Add(AppendLabel($"\u2192 {_entry.OwnerCreatureName}:", TargetColor));
+            labels.Add(AppendLabel($"\u2192 {_entry.OwnerCreatureName}:", PowerColors.Target));
         }
 
         if (_entry.Icon is not null)
@@ -64,14 +59,14 @@ public partial class PowerEntryRow : HBoxContainer
 
         if (_entry.ApplierCombatId.HasValue && _entry.ApplierCombatId != _entry.OwnerCreatureCombatId)
         {
-            labels.Add(AppendLabel($"\u2190 {_entry.ApplierName}", TargetColor));
+            labels.Add(AppendLabel($"\u2190 {_entry.ApplierName}", PowerColors.Target));
         }
 
         var originalColors = labels.Select(l => l.GetThemeColor("font_color")).ToList();
 
         MouseEntered += () =>
         {
-            foreach (var l in labels) l.AddThemeColorOverride("font_color", HoverColor);
+            foreach (var l in labels) l.AddThemeColorOverride("font_color", PowerColors.Hover);
             _highlighter.Highlight(_entry.OwnerCreatureCombatId);
             if (_entry.ApplierCombatId.HasValue && _entry.ApplierCombatId != _entry.OwnerCreatureCombatId)
                 _highlighter.Highlight(_entry.ApplierCombatId);
