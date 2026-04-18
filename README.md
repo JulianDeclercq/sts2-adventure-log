@@ -4,6 +4,16 @@ A Slay the Spire 2 mod that shows a scrollable log of every card played, damage 
 
 ## Install
 
+Either use Vortex (automatic) or drop the files in manually.
+
+### Via Vortex (recommended)
+
+1. Install [Vortex](https://www.nexusmods.com/about/vortex/) if you don't already have it.
+2. On the CombatLog Nexus page, click **Mod Manager Download** (→ opens in Vortex).
+3. In Vortex, click **Enable** on the mod.
+4. Launch the game — you should see "X mods loaded" on the main menu.
+5. Press **F** in combat to toggle the log panel.
+
 ### Manual
 
 1. In Steam, right-click **Slay the Spire 2** → Properties → Installed Files → Browse.
@@ -18,10 +28,6 @@ A Slay the Spire 2 mod that shows a scrollable log of every card played, damage 
    ```
 4. Launch the game. You should see "X mods loaded" on the main menu.
 5. Press **F** in combat to toggle the log panel.
-
-### Mod manager
-
-Drop the zip into [STS2 Mod Manager](https://www.nexusmods.com/slaythespire2/mods/461) and let it handle placement.
 
 ### First-time modding note
 
@@ -52,4 +58,4 @@ Auto-deploys the DLL + manifest to the game's `mods/CombatLog/` folder. Game pat
 
 ## License
 
-MIT.
+MIT — see [LICENSE](./LICENSE).
