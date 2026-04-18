@@ -2,15 +2,15 @@ using Godot;
 
 namespace CombatLog.CombatLogCode.UI.Rows;
 
-public partial class RelicTargetSubRow : HBoxContainer
+public partial class SourceHeaderRow : HBoxContainer
 {
-    private readonly string _targetName;
+    private readonly string _sourceName;
     private readonly uint? _combatId;
     private readonly CreatureHighlighter _highlighter;
 
-    public RelicTargetSubRow(string targetName, uint? combatId, CreatureHighlighter highlighter)
+    public SourceHeaderRow(string sourceName, uint? combatId, CreatureHighlighter highlighter)
     {
-        _targetName = targetName;
+        _sourceName = sourceName;
         _combatId = combatId;
         _highlighter = highlighter;
     }
@@ -20,10 +20,8 @@ public partial class RelicTargetSubRow : HBoxContainer
         AddThemeConstantOverride("separation", 4);
         MouseFilter = MouseFilterEnum.Stop;
 
-        AddChild(new Label { Text = "    " });
-
         var label = new Label();
-        label.Text = $"\u2192 {NameTruncator.Short(_targetName)}";
+        label.Text = $"{NameTruncator.Short(_sourceName)}:";
         label.AddThemeColorOverride("font_color", DamageColors.Source);
         AddChild(label);
 

@@ -177,7 +177,7 @@ public partial class CombatLogPanel : Control
         foreach (var child in _list.GetChildren())
             child.QueueFree();
 
-        var items = BuildRenderItems(history);
+        var items = CoalesceSourceGroups(BuildRenderItems(history));
 
         int lastTurn = -1;
 
@@ -217,28 +217,14 @@ public partial class CombatLogPanel : Control
             case RelicRenderItem r:
                 _list.AddChild(new RelicEntryRow(r.Proc, _highlighter));
                 var relicSource = r.Damages.FirstOrDefault()?.SourceCombatId;
-                var covered = new HashSet<uint>();
                 foreach (var g in GroupDamagesByVictim(r.Damages))
-                {
                     _list.AddChild(new DamageSubRow(
                         g.VictimName, g.VictimCombatId, relicSource,
                         g.HpLost, g.Blocked, g.Killed, _highlighter));
-                    if (g.VictimCombatId.HasValue) covered.Add(g.VictimCombatId.Value);
-                }
                 foreach (var p in r.Powers)
-                {
                     _list.AddChild(new PowerSubRow(p, _highlighter));
-                    if (p.OwnerCreatureCombatId.HasValue) covered.Add(p.OwnerCreatureCombatId.Value);
-                }
                 foreach (var e in r.EnergyDeltas)
                     _list.AddChild(new EnergySubRow(e, _highlighter));
-                for (int t = 0; t < r.Proc.TargetNames.Count; t++)
-                {
-                    var tid = r.Proc.TargetCombatIds[t];
-                    if (tid.HasValue && covered.Contains(tid.Value)) continue;
-                    _list.AddChild(new CombatLog.CombatLogCode.UI.Rows.RelicTargetSubRow(
-                        r.Proc.TargetNames[t], tid, _highlighter));
-                }
                 break;
             case PowerRenderItem p:
                 _list.AddChild(new PowerEntryRow(p.Power, _highlighter));
@@ -248,6 +234,15 @@ public partial class CombatLogPanel : Control
                 break;
             case RecallRenderItem r:
                 _list.AddChild(new CardRecallRow(r.Recall, OpenInspectScreen));
+                break;
+            case SourceGroupRenderItem g:
+                _list.AddChild(new SourceHeaderRow(g.SourceName, g.SourceCombatId, _highlighter));
+                foreach (var gd in GroupDamagesByVictim(g.Damages))
+                    _list.AddChild(new DamageSubRow(
+                        gd.VictimName, gd.VictimCombatId, g.SourceCombatId,
+                        gd.HpLost, gd.Blocked, gd.Killed, _highlighter));
+                foreach (var pe in g.Powers)
+                    _list.AddChild(new PowerSubRow(pe, _highlighter));
                 break;
         }
     }
@@ -301,6 +296,72 @@ public partial class CombatLogPanel : Control
         : RenderItem(Energy.CombatNumber, Energy.TurnNumber);
     private sealed record RecallRenderItem(CardRecallEvent Recall)
         : RenderItem(Recall.CombatNumber, Recall.TurnNumber);
+    private sealed record SourceGroupRenderItem(
+        string SourceName, uint? SourceCombatId,
+        IReadOnlyList<DamageReceivedEvent> Damages,
+        IReadOnlyList<PowerReceivedEvent> Powers,
+        int CombatNumber, int TurnNumber)
+        : RenderItem(CombatNumber, TurnNumber);
+
+    private static (uint? id, string name)? SourceKey(RenderItem item) => item switch
+    {
+        DamageRenderItem d when d.Damage.SourceCombatId.HasValue && string.IsNullOrEmpty(d.Damage.SourceCardName)
+            => (d.Damage.SourceCombatId, d.Damage.SourceName),
+        PowerRenderItem p when p.Power.ApplierCombatId.HasValue
+            => (p.Power.ApplierCombatId, p.Power.ApplierName ?? ""),
+        _ => null,
+    };
+
+    private static List<RenderItem> CoalesceSourceGroups(List<RenderItem> items)
+    {
+        var result = new List<RenderItem>();
+        int i = 0;
+        while (i < items.Count)
+        {
+            var key = SourceKey(items[i]);
+            if (key is null)
+            {
+                result.Add(items[i]);
+                i++;
+                continue;
+            }
+
+            int j = i + 1;
+            while (j < items.Count)
+            {
+                var next = SourceKey(items[j]);
+                if (next is null) break;
+                if (next.Value.id != key.Value.id) break;
+                if (items[j].TurnNumber != items[i].TurnNumber) break;
+                if (items[j].CombatNumber != items[i].CombatNumber) break;
+                j++;
+            }
+
+            int runLen = j - i;
+            if (runLen < 2)
+            {
+                result.Add(items[i]);
+                i++;
+                continue;
+            }
+
+            var damages = new List<DamageReceivedEvent>();
+            var powers = new List<PowerReceivedEvent>();
+            for (int k = i; k < j; k++)
+            {
+                switch (items[k])
+                {
+                    case DamageRenderItem d: damages.Add(d.Damage); break;
+                    case PowerRenderItem p: powers.Add(p.Power); break;
+                }
+            }
+            result.Add(new SourceGroupRenderItem(
+                key.Value.name, key.Value.id, damages, powers,
+                items[i].CombatNumber, items[i].TurnNumber));
+            i = j;
+        }
+        return result;
+    }
 
     private static List<RenderItem> BuildRenderItems(IReadOnlyList<LogEvent> history)
     {
