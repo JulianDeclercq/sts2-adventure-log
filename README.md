@@ -2,6 +2,8 @@
 
 A Slay the Spire 2 mod that shows a scrollable log of every card played, damage dealt, power applied, relic procced, energy gained, and card recalled during a run. Press **F** in combat to toggle the panel.
 
+**Works in multiplayer.** Tracks every player's actions — not just yours. No version matching required; only the person who wants the log needs to install it.
+
 ## Install
 
 Either use Vortex (automatic) or drop the files in manually.
@@ -46,7 +48,11 @@ Modded and unmodded runs use separate save files. On your first mod install, cop
 
 ## Multiplayer
 
-Marked `affects_gameplay: false`, so the mod is allowed in multiplayer without version matching. Tracks cards played by all players in a run.
+Fully supported. Everything the log tracks — card plays, damage, powers, relics, energy gains, recalls — is captured for every player in the lobby, labeled with the owner's name.
+
+- **No version matching required.** Manifest is marked `affects_gameplay: false`, so CombatLog is an observation-only mod and the game won't block lobbies where only some players run it.
+- **Only one player needs the mod.** Install it yourself to see the log; teammates don't have to.
+- **Safe to mix versions.** Because the mod never changes gameplay state, running a different version from teammates can't cause desyncs.
 
 ## Build from source
 
