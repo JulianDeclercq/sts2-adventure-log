@@ -1,19 +1,27 @@
+using System.Threading.Tasks;
 using Godot;
 using HarmonyLib;
-using MegaCrit.Sts2.Core.Combat;
-using MegaCrit.Sts2.Core.Combat.History;
+using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Entities.Creatures;
+using MegaCrit.Sts2.Core.GameActions.Multiplayer;
 using MegaCrit.Sts2.Core.Models;
+using MegaCrit.Sts2.Core.ValueProps;
 
 namespace CombatLog.CombatLogCode.Patches;
 
 /// <summary>
-/// Patches CombatHistory.DamageReceived — the game's own per-damage history call —
-/// to mirror each damage into our log.
-/// Signature: DamageReceived(CombatState, Creature receiver, Creature? dealer, DamageResult result, CardModel? cardSource)
-/// Sync, fires only during combat (gated by caller at CreatureCmd.Damage:176).
+/// Patches the base 6-arg <see cref="CreatureCmd.Damage"/> overload — every other
+/// Damage overload delegates here, so this catches all combat damage.
+///
+/// Why not patch CombatHistory.DamageReceived (the obvious hook)? CreatureCmd.Damage
+/// gates that call behind `IsInProgress &amp;&amp; !IsEnding`. The killing hit on the
+/// last alive primary enemy flips IsEnding true *before* the gate runs, so the
+/// fatal DamageResult is silently dropped from CombatHistory and any patch on it
+/// never fires. Patching here records every result including kills.
 /// </summary>
-[HarmonyPatch(typeof(CombatHistory), nameof(CombatHistory.DamageReceived))]
+[HarmonyPatch(typeof(CreatureCmd), nameof(CreatureCmd.Damage),
+    typeof(PlayerChoiceContext), typeof(IEnumerable<Creature>),
+    typeof(decimal), typeof(ValueProp), typeof(Creature), typeof(CardModel))]
 public static class DamageReceivedPatch
 {
     private static readonly HashSet<string> SelfDamagingPowers =
@@ -27,42 +35,53 @@ public static class DamageReceivedPatch
         return null;
     }
 
-    [HarmonyPostfix]
-    public static void Postfix(CombatState __0, Creature __1, Creature? __2, DamageResult __3, CardModel? __4)
+    private static void RecordOne(Creature receiver, Creature? dealer, DamageResult result, CardModel? cardSource)
     {
-        try
+        var ownerNetId = receiver.Player?.NetId ?? dealer?.Player?.NetId;
+        OwnerResolver.Resolve(ownerNetId, out var ownerName, out var isLocal);
+
+        var sourceCardName = cardSource?.Title;
+        var sourceName = !string.IsNullOrEmpty(sourceCardName)
+            ? sourceCardName!
+            : dealer?.Name ?? ResolveSelfDamagingPower(receiver) ?? "";
+
+        CombatLogTracker.RecordDamageReceived(
+            victimName: receiver.Name,
+            victimCombatId: receiver.CombatId,
+            sourceName: sourceName,
+            sourceCombatId: dealer?.CombatId,
+            sourceCardName: sourceCardName,
+            blocked: result.BlockedDamage,
+            hpLost: result.UnblockedDamage,
+            overkill: result.OverkillDamage,
+            wasKilled: result.WasTargetKilled,
+            wasFullyBlocked: result.WasFullyBlocked,
+            ownerNetId: ownerNetId,
+            ownerName: ownerName,
+            isLocal: isLocal);
+    }
+
+    [HarmonyPostfix]
+    public static void Postfix(Task<IEnumerable<DamageResult>> __result, Creature? __4, CardModel? __5)
+    {
+        if (__result is null) return;
+        var dealer = __4;
+        var cardSource = __5;
+        __result.ContinueWith(t =>
         {
-            var receiver = __1;
-            var dealer = __2;
-            var result = __3;
-            var cardSource = __4;
-
-            var ownerNetId = receiver.Player?.NetId ?? dealer?.Player?.NetId;
-            OwnerResolver.Resolve(ownerNetId, out var ownerName, out var isLocal);
-
-            var sourceCardName = cardSource?.Title;
-            var sourceName = !string.IsNullOrEmpty(sourceCardName)
-                ? sourceCardName!
-                : dealer?.Name ?? ResolveSelfDamagingPower(receiver) ?? "";
-
-            CombatLogTracker.RecordDamageReceived(
-                victimName: receiver.Name,
-                victimCombatId: receiver.CombatId,
-                sourceName: sourceName,
-                sourceCombatId: dealer?.CombatId,
-                sourceCardName: sourceCardName,
-                blocked: result.BlockedDamage,
-                hpLost: result.UnblockedDamage,
-                overkill: result.OverkillDamage,
-                wasKilled: result.WasTargetKilled,
-                wasFullyBlocked: result.WasFullyBlocked,
-                ownerNetId: ownerNetId,
-                ownerName: ownerName,
-                isLocal: isLocal);
-        }
-        catch (Exception e)
-        {
-            GD.PrintErr($"[CombatLog] Error recording damage: {e.Message}");
-        }
+            try
+            {
+                if (!t.IsCompletedSuccessfully || t.Result is null) return;
+                foreach (var r in t.Result)
+                {
+                    if (r is null) continue;
+                    RecordOne(r.Receiver, dealer, r, cardSource);
+                }
+            }
+            catch (Exception e)
+            {
+                GD.PrintErr($"[CombatLog] Error recording damage: {e.Message}");
+            }
+        }, TaskContinuationOptions.ExecuteSynchronously);
     }
 }
