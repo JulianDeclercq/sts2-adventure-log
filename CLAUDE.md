@@ -7,7 +7,6 @@ A Slay the Spire 2 mod that tracks and displays cards played during a run as a t
 - **Language:** C# / .NET 9.0
 - **Engine:** Godot 4.5.1 (MegaDot variant)
 - **Patching:** HarmonyLib (`0Harmony.dll` from game data)
-- **Dependency:** BaseLib (community modding library)
 - **Mod ID:** `CombatLog`
 - **affects_gameplay:** `false` (observation-only, safe for multiplayer)
 
@@ -47,7 +46,7 @@ Game path is auto-discovered via `Sts2PathDiscovery.props` (Steam registry + com
 | `has_pck` | `false` | Set to `true` only if you have a `.pck` file. Game rejects mods with missing declared assets. |
 | `has_dll` | `true` | We have compiled code |
 | `affects_gameplay` | `false` | Cosmetic/info mods MUST be false. Controls multiplayer connection checks. Wrong value causes desyncs. |
-| `dependencies` | `["BaseLib"]` | BaseLib must also be in the mods folder |
+| `dependencies` | `[]` | No external mod dependencies |
 
 ## Key Game Classes (from sts2.dll decompilation)
 
@@ -133,10 +132,6 @@ Modded and unmodded gameplay use **separate save files**. Disabling all mods res
 ## Logging
 
 ```csharp
-// Preferred: game's logger (appears in game log files)
-MainFile.Logger.Info("message");
-
-// Also works: Godot's built-in (appears in console/stdout)
 GD.Print("message");
 GD.PrintErr("error message");
 ```
@@ -181,18 +176,8 @@ When the user shows a screenshot of an existing game UI component and asks to ma
 
 **Example:** When asked to match the Compendium run history card icons, the right first move is finding and instantiating `NTinyCard` — not loading type icon PNGs.
 
-**In-tree example — damage sub rows reuse `NStatEntry`:**
-`CombatLogCode/UI/Rows/DamageSubRow.cs` instantiates the stats-screen row scene (`res://scenes/screens/stats_screen/stats_screen_section.tscn`) and writes "→ Victim: -N HP (M blocked)" into the top label (BBCode for per-segment color). `_bottomLabel` is hidden (different authored font size) and `_icon` is hidden (no icon needed). Inherits MegaRichTextLabel font and focus-tween for free.
-
-```csharp
-var entry = PreloadManager.Cache.GetScene(NStatEntry.ScenePath)
-    .Instantiate<NStatEntry>();
-entry.Ready += () => {
-    entry._icon.Visible = false;
-    entry._bottomLabel.Visible = false;
-    entry.SetTopText(bbcodeEncodedLine);  // must be after Ready — labels are wired in _Ready
-};
-```
+**In-tree example — `NTinyCard` for card icons:**
+`CombatLogCode/UI/Rows/TinyCardFactory.cs` instantiates `res://scenes/cards/tiny_card.tscn` and calls `SetCard` after `Ready` fires (see Gotcha #8 for the `Ready`-vs-`TreeEntered` timing).
 
 Full inventory of reusable game list/row UIs in `docs/ui-reuse-options.md`.
 
@@ -202,7 +187,7 @@ Full inventory of reusable game list/row UIs in `docs/ui-reuse-options.md`.
 2. **`has_pck: true` without a .pck file** — game silently ignores the mod. Set to `false` if not exporting a .pck.
 3. **`CombatRoom` vs `NCombatRoom`** — `CombatRoom` is a model (no Godot methods). `NCombatRoom` is the Node. Use `NCombatRoom` for scene tree operations.
 4. **Mod not in mod list but loaded** — mods without a config UI don't appear in the sidebar list. Check "X mods loaded" text on main menu.
-5. **Early Access breakage** — game updates frequently break mods. BaseLib usually updates within a day. Custom Harmony patches may need manual fixes.
+5. **Early Access breakage** — game updates frequently break mods. Our Harmony patches may need manual fixes after each patch. Check decompiled sts2.dll changes.
 6. **Godot scene scripts** — if creating `.tscn` scenes with mod scripts, add to initialization:
    ```csharp
    var assembly = Assembly.GetExecutingAssembly();
@@ -252,7 +237,7 @@ Per gotcha #10 — when using a game component, decompile a game class that alre
 ### Fallbacks
 
 1. **Search GitHub for other STS2 mods** — community mods are the real documentation.
-2. **Official wikis** — BaseLib docs often incomplete (CardModel docs are "TODO").
+2. **Official wikis** — often incomplete (BaseLib's CardModel docs are "TODO").
 3. **Property not accessible via publicizer** → `Traverse.Create(instance).Property<T>("PropName").Value`.
 
 ### Quick routing cheatsheet
