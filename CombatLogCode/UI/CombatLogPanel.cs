@@ -34,8 +34,8 @@ public partial class CombatLogPanel : Control
         _highlighter = new CreatureHighlighter(this);
 
         var viewport = GetViewport().GetVisibleRect().Size;
-        const float defaultWidth = 350f;
-        var defaultHeight = (0.78f - 0.07f) * viewport.Y;
+        const float defaultWidth = 420f;
+        const float defaultHeight = 260f;
         AnchorLeft = 0; AnchorRight = 0; AnchorTop = 0; AnchorBottom = 0;
         OffsetRight = viewport.X - 10;
         OffsetLeft = OffsetRight - defaultWidth;
