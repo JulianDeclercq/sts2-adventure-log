@@ -32,7 +32,7 @@ public partial class PowerEntryRow : HBoxContainer
 
         if (!string.IsNullOrEmpty(_entry.OwnerCreatureName))
         {
-            labels.Add(AppendLabel($"\u2192 {NameTruncator.Short(_entry.OwnerCreatureName)}:", PowerColors.Target));
+            labels.Add(AppendLabel($"{NameTruncator.Short(_entry.OwnerCreatureName)}:", PowerColors.Target));
         }
 
         if (_entry.Icon is not null)
