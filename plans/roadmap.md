@@ -130,7 +130,7 @@ Each step: build, manual test (solo AND 2-player MP), commit. Keep `affects_game
 - Potions that give cards should log which card was taken
 - Card rewards taken should be shown in log
 - Teammate relics should show their tooltip on hover (not in own RelicBar, so native `RelicBar.OnFocus` misses them)
-- Strength changes like "+-8 Strength" should render as "-8 Strength", colored red for negative
+- ~~Strength changes like "+-8 Strength" should render as "-8 Strength", colored red for negative~~ — fixed: omit the "+" sign for negative deltas, render in red instead of buff/debuff color
 - Relic hover for own relics appears broken in MP — investigate whether `RelicBar.OnFocus` targets wrong bar
 
 ## Non-Goals (for now)
