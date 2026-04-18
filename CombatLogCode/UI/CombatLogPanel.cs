@@ -232,6 +232,9 @@ public partial class CombatLogPanel : Control
             case EnergyRenderItem e:
                 _list.AddChild(new EnergySubRow(e.Energy, _highlighter));
                 break;
+            case RecallRenderItem r:
+                _list.AddChild(new CardRecallRow(r.Recall, OpenInspectScreen));
+                break;
         }
     }
 
@@ -282,6 +285,8 @@ public partial class CombatLogPanel : Control
         : RenderItem(Power.CombatNumber, Power.TurnNumber);
     private sealed record EnergyRenderItem(EnergyDeltaEvent Energy)
         : RenderItem(Energy.CombatNumber, Energy.TurnNumber);
+    private sealed record RecallRenderItem(CardRecallEvent Recall)
+        : RenderItem(Recall.CombatNumber, Recall.TurnNumber);
 
     private static List<RenderItem> BuildRenderItems(IReadOnlyList<LogEvent> history)
     {
@@ -341,6 +346,9 @@ public partial class CombatLogPanel : Control
                     break;
                 case EnergyDeltaEvent energy:
                     items.Add(new EnergyRenderItem(energy));
+                    break;
+                case CardRecallEvent recall:
+                    items.Add(new RecallRenderItem(recall));
                     break;
             }
         }

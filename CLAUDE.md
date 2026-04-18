@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-A Slay the Spire 2 mod that tracks and displays cards played during a run as a toggleable overlay (press H). Built with the [Alchyr/ModTemplate-StS2](https://github.com/Alchyr/ModTemplate-StS2) template.
+A Slay the Spire 2 mod that tracks and displays cards played during a run as a toggleable overlay (press F). Built with the [Alchyr/ModTemplate-StS2](https://github.com/Alchyr/ModTemplate-StS2) template.
 
 - **Language:** C# / .NET 9.0
 - **Engine:** Godot 4.5.1 (MegaDot variant)

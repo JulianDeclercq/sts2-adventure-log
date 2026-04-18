@@ -9,8 +9,8 @@ namespace CombatLog.CombatLogCode;
 public static class CombatLogTracker
 {
     public static List<LogEvent> History { get; } = new();
-    public static int CurrentTurn { get; set; } = 1;
-    public static int CurrentCombat { get; set; } = 0;
+    public static int CurrentTurn { get; private set; } = 1;
+    public static int CurrentCombat { get; private set; } = 0;
 
     private static int _orderCounter;
     private static bool _firstPlayerTurn;
@@ -70,6 +70,18 @@ public static class CombatLogTracker
         Append(e);
     }
 
+    public static void RecordCardRecall(
+        string recalledCardName, CardModel? recalledCard,
+        ulong? ownerNetId, string ownerName, bool isLocal)
+    {
+        _orderCounter++;
+        var e = new CardRecallEvent(
+            recalledCardName, recalledCard,
+            ownerNetId, ownerName, isLocal,
+            CurrentTurn, _orderCounter, CurrentCombat);
+        Append(e);
+    }
+
     public static void RecordPowerReceived(
         string powerId, string powerTitle, PowerType type, PowerStackType stackType,
         int delta, int newTotal,
@@ -111,14 +123,6 @@ public static class CombatLogTracker
         _firstPlayerTurn = true;
         History.Clear();
         OnHistoryChanged?.Invoke();
-    }
-
-    public static void Clear()
-    {
-        History.Clear();
-        CurrentTurn = 1;
-        CurrentCombat = 0;
-        _orderCounter = 0;
     }
 
     public static event Action? OnHistoryChanged;

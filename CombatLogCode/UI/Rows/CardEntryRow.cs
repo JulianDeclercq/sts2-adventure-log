@@ -3,7 +3,6 @@ using Godot;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.HoverTips;
 using MegaCrit.Sts2.Core.Models;
-using MegaCrit.Sts2.Core.Nodes.Cards;
 using MegaCrit.Sts2.Core.Nodes.HoverTips;
 
 namespace CombatLog.CombatLogCode.UI.Rows;
@@ -14,9 +13,7 @@ public partial class CardEntryRow : HBoxContainer
     private static readonly Color CardLinkHoverColor = new(1.0f, 0.95f, 0.5f);
     private static readonly Color NoCardColor = new(0.6f, 0.6f, 0.6f);
 
-    private const string TinyCardScenePath = "res://scenes/cards/tiny_card.tscn";
     private const float CardIconSize = 24;
-    private static PackedScene? _tinyCardScene;
 
     private readonly CardPlayEvent _entry;
     private readonly IReadOnlyList<DamageReceivedEvent> _damages;
@@ -56,16 +53,8 @@ public partial class CardEntryRow : HBoxContainer
         AddThemeConstantOverride("separation", 4);
         MouseFilter = MouseFilterEnum.Stop;
 
-        _tinyCardScene ??= GD.Load<PackedScene>(TinyCardScenePath);
-        if (_tinyCardScene is not null)
-        {
-            var tinyCard = _tinyCardScene.Instantiate<NTinyCard>();
-            tinyCard.CustomMinimumSize = new Vector2(CardIconSize, CardIconSize);
-            tinyCard.Scale = new Vector2(0.4f, 0.4f);
-            AddChild(tinyCard);
-            var cardRef = card;
-            tinyCard.Ready += () => tinyCard.SetCard(cardRef);
-        }
+        var tinyCard = TinyCardFactory.Build(card, CardIconSize);
+        if (tinyCard is not null) AddChild(tinyCard);
 
         var nameLabel = new Label();
         nameLabel.Text = displayText;
