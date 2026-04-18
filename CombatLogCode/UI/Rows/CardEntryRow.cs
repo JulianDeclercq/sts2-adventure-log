@@ -34,9 +34,10 @@ public partial class CardEntryRow : HBoxContainer
 
     public override void _Ready()
     {
+        var shortCardName = NameTruncator.Short(_entry.CardName);
         var displayText = string.IsNullOrEmpty(_entry.OwnerName)
-            ? _entry.CardName
-            : $"{_entry.CardName} [{_entry.OwnerName}]";
+            ? shortCardName
+            : $"{shortCardName} [{_entry.OwnerName}]";
 
         if (_entry.Card is null)
         {

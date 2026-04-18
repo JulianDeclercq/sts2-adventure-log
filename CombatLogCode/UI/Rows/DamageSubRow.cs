@@ -38,7 +38,7 @@ public partial class DamageSubRow : HBoxContainer
         var labels = new List<Label>();
 
         var victimLabel = new Label();
-        victimLabel.Text = $"→ {_victimName}:";
+        victimLabel.Text = $"→ {NameTruncator.Short(_victimName)}:";
         victimLabel.AddThemeColorOverride("font_color", VictimColor);
         AddChild(victimLabel);
         labels.Add(victimLabel);

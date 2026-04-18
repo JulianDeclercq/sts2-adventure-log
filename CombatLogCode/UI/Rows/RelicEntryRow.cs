@@ -45,15 +45,16 @@ public partial class RelicEntryRow : HBoxContainer
 
         var labels = new List<Label>();
 
+        var shortName = NameTruncator.Short(_entry.RelicName);
         var nameText = string.IsNullOrEmpty(_entry.OwnerName)
-            ? _entry.RelicName
-            : $"{_entry.RelicName} [{_entry.OwnerName}]";
+            ? shortName
+            : $"{shortName} [{_entry.OwnerName}]";
         labels.Add(AppendLabel(nameText, RelicColor));
 
         if (_entry.TargetNames.Count > 0)
         {
-            var targets = string.Join(", ", _entry.TargetNames);
-            labels.Add(AppendLabel($"→ {targets}", TargetColor));
+            var targets = string.Join(", ", _entry.TargetNames.Select(n => NameTruncator.Short(n)));
+            labels.Add(AppendLabel($"\u2192 {targets}", TargetColor));
         }
 
         var originalColors = labels.Select(l => l.GetThemeColor("font_color")).ToList();

@@ -32,7 +32,7 @@ public partial class PowerEntryRow : HBoxContainer
 
         if (!string.IsNullOrEmpty(_entry.OwnerCreatureName))
         {
-            labels.Add(AppendLabel($"\u2192 {_entry.OwnerCreatureName}:", PowerColors.Target));
+            labels.Add(AppendLabel($"{NameTruncator.Short(_entry.OwnerCreatureName)}:", PowerColors.Target));
         }
 
         if (_entry.Icon is not null)
@@ -47,12 +47,13 @@ public partial class PowerEntryRow : HBoxContainer
             AddChild(rect);
         }
 
+        var shortTitle = NameTruncator.Short(_entry.PowerTitle);
         var nameText = _entry.StackType == PowerStackType.Counter
-            ? $"{(_entry.Delta >= 0 ? "+" : "")}{_entry.Delta} {_entry.PowerTitle}"
-            : $"{_entry.PowerTitle}";
+            ? $"{(_entry.Delta >= 0 ? "+" : "")}{_entry.Delta} {shortTitle}"
+            : shortTitle;
 
         if (_entry.NewTotal != _entry.Delta)
-            nameText += $" (={_entry.NewTotal})";
+            nameText += $" ({_entry.NewTotal})";
 
         if (!string.IsNullOrEmpty(_entry.OwnerName))
             nameText += $" [{_entry.OwnerName}]";
@@ -61,7 +62,7 @@ public partial class PowerEntryRow : HBoxContainer
 
         if (_entry.ApplierCombatId.HasValue && _entry.ApplierCombatId != _entry.OwnerCreatureCombatId)
         {
-            labels.Add(AppendLabel($"\u2190 {_entry.ApplierName}", PowerColors.Target));
+            labels.Add(AppendLabel($"\u2190 {NameTruncator.Short(_entry.ApplierName)}", PowerColors.Target));
         }
 
         var originalColors = labels.Select(l => l.GetThemeColor("font_color")).ToList();

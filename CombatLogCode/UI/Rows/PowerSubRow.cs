@@ -39,7 +39,7 @@ public partial class PowerSubRow : HBoxContainer
         if (!isSelfTarget && !string.IsNullOrEmpty(_entry.OwnerCreatureName))
         {
             var targetLabel = new Label();
-            targetLabel.Text = $"\u2192 {_entry.OwnerCreatureName}:";
+            targetLabel.Text = $"\u2192 {NameTruncator.Short(_entry.OwnerCreatureName)}:";
             targetLabel.AddThemeColorOverride("font_color", PowerColors.Target);
             AddChild(targetLabel);
             labels.Add(targetLabel);
@@ -56,11 +56,12 @@ public partial class PowerSubRow : HBoxContainer
             });
         }
 
+        var shortTitle = NameTruncator.Short(_entry.PowerTitle);
         var effectText = _entry.StackType == PowerStackType.Counter
-            ? $"{(_entry.Delta >= 0 ? "+" : "")}{_entry.Delta} {_entry.PowerTitle}"
-            : $"{_entry.PowerTitle}";
+            ? $"{(_entry.Delta >= 0 ? "+" : "")}{_entry.Delta} {shortTitle}"
+            : shortTitle;
         if (_entry.NewTotal != _entry.Delta)
-            effectText += $" (={_entry.NewTotal})";
+            effectText += $" ({_entry.NewTotal})";
 
         var effectLabel = new Label();
         effectLabel.Text = effectText;

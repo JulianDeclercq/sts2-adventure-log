@@ -41,9 +41,10 @@ public partial class CardRecallRow : HBoxContainer
         }
 
         var nameLabel = new Label();
+        var shortCardName = NameTruncator.Short(_entry.RecalledCardName);
         var nameText = string.IsNullOrEmpty(_entry.OwnerName)
-            ? $"{_entry.RecalledCardName} recalled"
-            : $"{_entry.RecalledCardName} recalled [{_entry.OwnerName}]";
+            ? $"{shortCardName} recalled"
+            : $"{shortCardName} recalled [{_entry.OwnerName}]";
         nameLabel.Text = nameText;
         var baseColor = _entry.RecalledCard is null ? NoCardColor : LabelColor;
         nameLabel.AddThemeColorOverride("font_color", baseColor);
