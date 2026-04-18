@@ -82,7 +82,11 @@ public partial class PowerSubRow : HBoxContainer
             if (_entry.Power is not null)
                 try
                 {
-                    var tip = NHoverTipSet.CreateAndShow(this, _entry.Power.HoverTips);
+                    var tips = _entry.Power.HoverTips.ToList();
+                    // PowerModel.HoverTips returns empty when IsVisible=false (e.g. Vulnerable mid-re-apply,
+                    // ally pets). Fall back to DumbHoverTip so the row always has a description.
+                    if (tips.Count == 0) tips.Add(_entry.Power.DumbHoverTip);
+                    var tip = NHoverTipSet.CreateAndShow(this, tips);
                     if (tip is not null) HoverTipHelper.PositionLeftOfCursor(this, tip);
                 }
                 catch { }
