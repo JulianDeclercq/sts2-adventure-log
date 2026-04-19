@@ -23,7 +23,7 @@ public partial class DamageEntryRow : HBoxContainer
         var indent = new Label { Text = "    " };
         AddChild(indent);
 
-        var labels = new List<Label>();
+        List<Label> labels = [];
 
         if (!string.IsNullOrEmpty(_entry.SourceName))
             labels.Add(AppendLabel($"{NameTruncator.Short(_entry.SourceName)} →", DamageColors.Source));

@@ -17,13 +17,22 @@ public partial class AdventureLogPanel : Control
     private Label _status = null!;
     private CreatureHighlighter _highlighter = null!;
     private bool _isShown;
-    private int _lastKnownCount;
     private bool _dragging;
     private Vector2 _dragStartMouse;
     private float _dragStartOffsetLeft;
     private float _dragStartOffsetRight;
     private float _dragStartOffsetTop;
     private float _dragStartOffsetBottom;
+
+    // Incremental render state. _items mirrors events ingested so far (oldest->newest).
+    // _rowCountsPerItem[i] = number of rows _items[i] contributes to _list (excluding its turn header).
+    // When _items[i] starts a new turn, a header row sits immediately above its rows in _list.
+    // _currentTopTurn = turn number of the most recently pushed item (== turn of top header in _list).
+    // _processedHistoryCount = next index in AdventureLogTracker.History to consume.
+    private readonly List<RenderItem> _items = new();
+    private readonly List<int> _rowCountsPerItem = new();
+    private int _processedHistoryCount;
+    private int _currentTopTurn = -1;
 
     private static AdventureLogPanel? _instance;
     public static AdventureLogPanel? Instance => _instance;
@@ -173,7 +182,7 @@ public partial class AdventureLogPanel : Control
 
     private void OnHistoryChanged()
     {
-        if (_isShown) RefreshList();
+        if (_isShown) ProcessNewEvents();
     }
 
     private void UpdateStatus()
@@ -184,137 +193,318 @@ public partial class AdventureLogPanel : Control
             : "F to toggle";
     }
 
+    // Full reset path. Used only on show/toggle — state is discarded and rebuilt from history.
     private void RefreshList()
     {
         UpdateStatus();
-        var history = AdventureLogTracker.History;
-        if (history.Count == _lastKnownCount) return;
-
         foreach (var child in _list.GetChildren())
             child.QueueFree();
+        _items.Clear();
+        _rowCountsPerItem.Clear();
+        _processedHistoryCount = 0;
+        _currentTopTurn = -1;
+        ProcessNewEvents();
+    }
 
-        var items = CoalesceSourceGroups(BuildRenderItems(history));
+    // Incremental path. Consumes any history entries past _processedHistoryCount without
+    // touching sealed prior rows. O(new events), not O(|history|).
+    private void ProcessNewEvents()
+    {
+        UpdateStatus();
+        var history = AdventureLogTracker.History;
 
-        int lastTurn = -1;
-
-        for (int i = items.Count - 1; i >= 0; i--)
+        // Tracker clears History at combat start. Detect via count-shrink and fall back to full reset.
+        if (history.Count < _processedHistoryCount)
         {
-            var item = items[i];
-
-            if (item.TurnNumber != lastTurn)
-            {
-                lastTurn = item.TurnNumber;
-                _list.AddChild(BuildTurnHeader(item.TurnNumber));
-            }
-
-            AppendRowsFor(item);
+            RefreshList();
+            return;
         }
 
-        _lastKnownCount = history.Count;
+        if (_processedHistoryCount >= history.Count) return;
+
+        while (_processedHistoryCount < history.Count)
+        {
+            var evt = history[_processedHistoryCount];
+            _processedHistoryCount++;
+            IngestEvent(evt);
+        }
+
         CallDeferred(nameof(ScrollToTop));
     }
 
-    private void AppendRowsFor(RenderItem item)
+    private void IngestEvent(LogEvent evt)
     {
+        // Open-tail absorption (CardRenderItem / PotionRenderItem / RelicRenderItem consume children).
+        if (_items.Count > 0 && TryAbsorbIntoTail(_items[^1], evt, out var updated))
+        {
+            _items[^1] = updated;
+            ReRenderTail();
+            return;
+        }
+
+        // New top-level item.
+        var newItem = CreateStandaloneItem(evt);
+        if (newItem is null) return;
+
+        // Relic back-absorption: orphan damage rows logged just before a relic flash belong to it.
+        if (newItem is RelicRenderItem relic)
+        {
+            List<DamageReceivedEvent> absorbedDamages = [];
+            while (_items.Count > 0
+                   && _items[^1] is DamageRenderItem dr
+                   && dr.TurnNumber == relic.TurnNumber
+                   && dr.CombatNumber == relic.CombatNumber
+                   && string.IsNullOrEmpty(dr.Damage.SourceCardName))
+            {
+                absorbedDamages.Insert(0, dr.Damage);
+                PopTailItem();
+            }
+            if (absorbedDamages.Count > 0)
+                newItem = relic with { Damages = absorbedDamages };
+        }
+
+        PushItem(newItem);
+    }
+
+    private bool TryAbsorbIntoTail(RenderItem tail, LogEvent evt, out RenderItem updated)
+    {
+        updated = tail;
+        switch (tail)
+        {
+            case CardRenderItem c:
+            {
+                var damages = c.Damages.ToList();
+                var powers = c.Powers.ToList();
+                var recalls = c.Recalls.ToList();
+                var energies = c.Energies.ToList();
+                var draws = c.Draws.ToList();
+                var discards = c.Discards.ToList();
+                var exhausts = c.Exhausts.ToList();
+                var blockGains = c.BlockGains.ToList();
+                var upgrades = c.Upgrades.ToList();
+                var generated = c.Generated.ToList();
+                if (TryConsumeCardChild(evt, c.Card, damages, powers, recalls, energies,
+                        draws, discards, exhausts, blockGains, upgrades, generated))
+                {
+                    updated = new CardRenderItem(c.Card, damages, powers, recalls, energies,
+                        draws, discards, exhausts, blockGains, upgrades, generated);
+                    return true;
+                }
+                return false;
+            }
+            case PotionRenderItem p:
+            {
+                var damages = p.Damages.ToList();
+                var powers = p.Powers.ToList();
+                var blocks = p.BlockGains.ToList();
+                var energies = p.Energies.ToList();
+                var upgrades = p.Upgrades.ToList();
+                var generated = p.Generated.ToList();
+                if (TryConsumePotionChild(evt, p.Potion, damages, powers, blocks, energies, upgrades, generated))
+                {
+                    updated = new PotionRenderItem(p.Potion, damages, powers, blocks, energies, upgrades, generated);
+                    return true;
+                }
+                return false;
+            }
+            case RelicRenderItem r:
+            {
+                if (evt.TurnNumber != r.TurnNumber || evt.CombatNumber != r.CombatNumber) return false;
+                switch (evt)
+                {
+                    case DamageReceivedEvent d when string.IsNullOrEmpty(d.SourceCardName):
+                        updated = r with { Damages = r.Damages.Append(d).ToList() };
+                        return true;
+                    case PowerReceivedEvent pe:
+                        updated = r with { Powers = r.Powers.Append(pe).ToList() };
+                        return true;
+                    case EnergyDeltaEvent ee:
+                        updated = r with { EnergyDeltas = r.EnergyDeltas.Append(ee).ToList() };
+                        return true;
+                }
+                return false;
+            }
+        }
+        return false;
+    }
+
+    private static RenderItem? CreateStandaloneItem(LogEvent evt) => evt switch
+    {
+        CardPlayEvent card => new CardRenderItem(card, [], [], [], [], [], [], [], [], [], []),
+        DamageReceivedEvent damage => new DamageRenderItem(damage),
+        RelicProcEvent relic => new RelicRenderItem(relic, [], [], []),
+        PowerReceivedEvent power => new PowerRenderItem(power),
+        EnergyDeltaEvent energy => new EnergyRenderItem(energy),
+        CardRecallEvent recall => new RecallRenderItem(recall),
+        CardDrawEvent draw => new DrawRenderItem(draw),
+        CardDiscardEvent discard => new DiscardRenderItem(discard),
+        CardExhaustEvent exhaust => new ExhaustRenderItem(exhaust),
+        CardAfflictionEvent affliction => new AfflictionRenderItem(affliction),
+        BlockGainedEvent block => new BlockGainedRenderItem(block),
+        PotionUsedEvent potion => new PotionRenderItem(potion, [], [], [], [], [], []),
+        CardUpgradeEvent upgrade => new UpgradeRenderItem(upgrade),
+        CardGeneratedEvent gen => new GeneratedRenderItem(gen),
+        _ => null,
+    };
+
+    // Push a new top-level item at the TOP of _list (visually newest). Inserts a turn header
+    // first if the item starts a new turn. Item rows always land at index 1 (below the top header).
+    private void PushItem(RenderItem item)
+    {
+        if (item.TurnNumber != _currentTopTurn)
+        {
+            _currentTopTurn = item.TurnNumber;
+            InsertNodeAt(BuildTurnHeader(item.TurnNumber), 0);
+        }
+
+        var rows = BuildRowsFor(item);
+        for (int i = 0; i < rows.Count; i++)
+            InsertNodeAt(rows[i], 1 + i);
+
+        _items.Add(item);
+        _rowCountsPerItem.Add(rows.Count);
+    }
+
+    // Rebuild only the tail item's rows in place. Tail rows are the N children directly below
+    // the top turn header (which is always at index 0 when _items is non-empty).
+    private void ReRenderTail()
+    {
+        int oldCount = _rowCountsPerItem[^1];
+        for (int i = 0; i < oldCount; i++)
+            RemoveChildAt(1);
+
+        var rows = BuildRowsFor(_items[^1]);
+        for (int i = 0; i < rows.Count; i++)
+            InsertNodeAt(rows[i], 1 + i);
+
+        _rowCountsPerItem[^1] = rows.Count;
+    }
+
+    // Remove the tail item (rows + its turn header if it was sole occupant of the top turn).
+    private void PopTailItem()
+    {
+        int count = _rowCountsPerItem[^1];
+        _rowCountsPerItem.RemoveAt(_rowCountsPerItem.Count - 1);
+        _items.RemoveAt(_items.Count - 1);
+
+        for (int i = 0; i < count; i++)
+            RemoveChildAt(1);
+
+        // If the popped item was the only one of the current top turn, drop the header too.
+        if (_items.Count == 0 || _items[^1].TurnNumber != _currentTopTurn)
+        {
+            RemoveChildAt(0);
+            _currentTopTurn = _items.Count > 0 ? _items[^1].TurnNumber : -1;
+        }
+    }
+
+    private void InsertNodeAt(Node node, int index)
+    {
+        _list.AddChild(node);
+        _list.MoveChild(node, index);
+    }
+
+    private void RemoveChildAt(int index)
+    {
+        var child = _list.GetChild(index);
+        _list.RemoveChild(child);
+        child.QueueFree();
+    }
+
+    private List<Node> BuildRowsFor(RenderItem item)
+    {
+        List<Node> rows = [];
         switch (item)
         {
             case CardRenderItem c:
-                _list.AddChild(new CardEntryRow(c.Card, c.Damages, _highlighter, OpenInspectScreen));
+                rows.Add(new CardEntryRow(c.Card, c.Damages, _highlighter, OpenInspectScreen));
                 foreach (var g in GroupDamagesByVictim(c.Damages))
-                    _list.AddChild(new DamageSubRow(
+                    rows.Add(new DamageSubRow(
                         g.VictimName, g.VictimCombatId, c.Card.PlayerCombatId,
                         g.HpLost, g.Blocked, g.Killed, _highlighter));
                 foreach (var p in c.Powers)
-                    _list.AddChild(new PowerSubRow(p, _highlighter));
+                    rows.Add(new PowerSubRow(p, _highlighter));
                 foreach (var e in c.Energies)
-                    _list.AddChild(new EnergySubRow(e, _highlighter, showSource: false));
+                    rows.Add(new EnergySubRow(e, _highlighter, showSource: false));
                 foreach (var r in c.Recalls)
-                    _list.AddChild(new CardRecallRow(r, OpenInspectScreen));
+                    rows.Add(new CardRecallRow(r, OpenInspectScreen));
                 foreach (var d in c.Draws)
-                    _list.AddChild(new CardDrawRow(d, OpenInspectScreen));
+                    rows.Add(new CardDrawRow(d, OpenInspectScreen));
                 foreach (var dc in c.Discards)
-                    _list.AddChild(new CardDiscardRow(dc, OpenInspectScreen));
+                    rows.Add(new CardDiscardRow(dc, OpenInspectScreen));
                 foreach (var b in c.BlockGains)
-                    _list.AddChild(new BlockGainedRow(b, _highlighter, showSource: false));
+                    rows.Add(new BlockGainedRow(b, _highlighter, showSource: false));
                 foreach (var u in c.Upgrades)
-                    _list.AddChild(new CardUpgradeRow(u, OpenInspectScreen));
+                    rows.Add(new CardUpgradeRow(u, OpenInspectScreen));
                 foreach (var gen in c.Generated)
-                    _list.AddChild(new CardGeneratedRow(gen, OpenInspectScreen));
+                    rows.Add(new CardGeneratedRow(gen, OpenInspectScreen));
                 foreach (var ex in c.Exhausts)
-                    _list.AddChild(new CardExhaustRow(ex, OpenInspectScreen));
+                    rows.Add(new CardExhaustRow(ex, OpenInspectScreen));
                 break;
             case DamageRenderItem d:
-                _list.AddChild(new DamageEntryRow(d.Damage, _highlighter));
+                rows.Add(new DamageEntryRow(d.Damage, _highlighter));
                 break;
             case RelicRenderItem r:
-                _list.AddChild(new RelicEntryRow(r.Proc, _highlighter));
+                rows.Add(new RelicEntryRow(r.Proc, _highlighter));
                 var relicSource = r.Damages.FirstOrDefault()?.SourceCombatId;
                 foreach (var g in GroupDamagesByVictim(r.Damages))
-                    _list.AddChild(new DamageSubRow(
+                    rows.Add(new DamageSubRow(
                         g.VictimName, g.VictimCombatId, relicSource,
                         g.HpLost, g.Blocked, g.Killed, _highlighter));
                 foreach (var p in r.Powers)
-                    _list.AddChild(new PowerSubRow(p, _highlighter));
+                    rows.Add(new PowerSubRow(p, _highlighter));
                 foreach (var e in r.EnergyDeltas)
-                    _list.AddChild(new EnergySubRow(e, _highlighter));
+                    rows.Add(new EnergySubRow(e, _highlighter));
                 break;
             case PowerRenderItem p:
-                _list.AddChild(new PowerEntryRow(p.Power, _highlighter));
+                rows.Add(new PowerEntryRow(p.Power, _highlighter));
                 break;
             case EnergyRenderItem e:
-                _list.AddChild(new EnergySubRow(e.Energy, _highlighter));
+                rows.Add(new EnergySubRow(e.Energy, _highlighter));
                 break;
             case RecallRenderItem r:
-                _list.AddChild(new CardRecallRow(r.Recall, OpenInspectScreen));
+                rows.Add(new CardRecallRow(r.Recall, OpenInspectScreen));
                 break;
             case DrawRenderItem d:
-                _list.AddChild(new CardDrawRow(d.Draw, OpenInspectScreen));
+                rows.Add(new CardDrawRow(d.Draw, OpenInspectScreen));
                 break;
             case DiscardRenderItem d:
-                _list.AddChild(new CardDiscardRow(d.Discard, OpenInspectScreen));
+                rows.Add(new CardDiscardRow(d.Discard, OpenInspectScreen));
                 break;
             case ExhaustRenderItem ex:
-                _list.AddChild(new CardExhaustRow(ex.Exhaust, OpenInspectScreen));
+                rows.Add(new CardExhaustRow(ex.Exhaust, OpenInspectScreen));
                 break;
             case AfflictionRenderItem a:
-                _list.AddChild(new CardAfflictionRow(a.Affliction, OpenInspectScreen));
+                rows.Add(new CardAfflictionRow(a.Affliction, OpenInspectScreen));
                 break;
             case BlockGainedRenderItem b:
-                _list.AddChild(new BlockGainedRow(b.Block, _highlighter));
+                rows.Add(new BlockGainedRow(b.Block, _highlighter));
                 break;
             case PotionRenderItem p:
-                _list.AddChild(new PotionUsedRow(p.Potion, _highlighter));
+                rows.Add(new PotionUsedRow(p.Potion, _highlighter));
                 foreach (var gd in GroupDamagesByVictim(p.Damages))
-                    _list.AddChild(new DamageSubRow(
+                    rows.Add(new DamageSubRow(
                         gd.VictimName, gd.VictimCombatId, null,
                         gd.HpLost, gd.Blocked, gd.Killed, _highlighter));
                 foreach (var pw in p.Powers)
-                    _list.AddChild(new PowerSubRow(pw, _highlighter));
+                    rows.Add(new PowerSubRow(pw, _highlighter));
                 foreach (var b in p.BlockGains)
-                    _list.AddChild(new BlockGainedRow(b, _highlighter, showSource: false));
+                    rows.Add(new BlockGainedRow(b, _highlighter, showSource: false));
                 foreach (var e in p.Energies)
-                    _list.AddChild(new EnergySubRow(e, _highlighter, showSource: false));
+                    rows.Add(new EnergySubRow(e, _highlighter, showSource: false));
                 foreach (var u in p.Upgrades)
-                    _list.AddChild(new CardUpgradeRow(u, OpenInspectScreen));
+                    rows.Add(new CardUpgradeRow(u, OpenInspectScreen));
                 foreach (var gen in p.Generated)
-                    _list.AddChild(new CardGeneratedRow(gen, OpenInspectScreen));
+                    rows.Add(new CardGeneratedRow(gen, OpenInspectScreen));
                 break;
             case UpgradeRenderItem u:
-                _list.AddChild(new CardUpgradeRow(u.Upgrade, OpenInspectScreen));
+                rows.Add(new CardUpgradeRow(u.Upgrade, OpenInspectScreen));
                 break;
             case GeneratedRenderItem g:
-                _list.AddChild(new CardGeneratedRow(g.Generated, OpenInspectScreen));
-                break;
-            case SourceGroupRenderItem g:
-                _list.AddChild(new SourceHeaderRow(g.SourceName, g.SourceCombatId, _highlighter));
-                foreach (var gd in GroupDamagesByVictim(g.Damages))
-                    _list.AddChild(new DamageSubRow(
-                        gd.VictimName, gd.VictimCombatId, g.SourceCombatId,
-                        gd.HpLost, gd.Blocked, gd.Killed, _highlighter));
-                foreach (var pe in g.Powers)
-                    _list.AddChild(new PowerSubRow(pe, _highlighter));
+                rows.Add(new CardGeneratedRow(g.Generated, OpenInspectScreen));
                 break;
         }
+        return rows;
     }
 
     private readonly record struct VictimGroup(
@@ -322,8 +512,8 @@ public partial class AdventureLogPanel : Control
 
     private static List<VictimGroup> GroupDamagesByVictim(IReadOnlyList<DamageReceivedEvent> damages)
     {
-        var result = new List<VictimGroup>();
-        var indexByKey = new Dictionary<string, int>();
+        List<VictimGroup> result = [];
+        Dictionary<string, int> indexByKey = [];
         foreach (var d in damages)
         {
             var key = d.VictimCombatId?.ToString() ?? $"name:{d.VictimName}";
@@ -397,182 +587,6 @@ public partial class AdventureLogPanel : Control
         : RenderItem(Upgrade.CombatNumber, Upgrade.TurnNumber);
     private sealed record GeneratedRenderItem(CardGeneratedEvent Generated)
         : RenderItem(Generated.CombatNumber, Generated.TurnNumber);
-    private sealed record SourceGroupRenderItem(
-        string SourceName, uint? SourceCombatId,
-        IReadOnlyList<DamageReceivedEvent> Damages,
-        IReadOnlyList<PowerReceivedEvent> Powers,
-        int CombatNumber, int TurnNumber)
-        : RenderItem(CombatNumber, TurnNumber);
-
-    private static (uint? id, string name)? SourceKey(RenderItem item) => item switch
-    {
-        DamageRenderItem d when d.Damage.SourceCombatId.HasValue && string.IsNullOrEmpty(d.Damage.SourceCardName)
-            => (d.Damage.SourceCombatId, d.Damage.SourceName),
-        PowerRenderItem p when p.Power.ApplierCombatId.HasValue
-            => (p.Power.ApplierCombatId, p.Power.ApplierName ?? ""),
-        _ => null,
-    };
-
-    private static List<RenderItem> CoalesceSourceGroups(List<RenderItem> items)
-    {
-        var result = new List<RenderItem>();
-        int i = 0;
-        while (i < items.Count)
-        {
-            var key = SourceKey(items[i]);
-            if (key is null)
-            {
-                result.Add(items[i]);
-                i++;
-                continue;
-            }
-
-            int j = i + 1;
-            while (j < items.Count)
-            {
-                var next = SourceKey(items[j]);
-                if (next is null) break;
-                if (next.Value.id != key.Value.id) break;
-                if (items[j].TurnNumber != items[i].TurnNumber) break;
-                if (items[j].CombatNumber != items[i].CombatNumber) break;
-                j++;
-            }
-
-            int runLen = j - i;
-            if (runLen < 2)
-            {
-                result.Add(items[i]);
-                i++;
-                continue;
-            }
-
-            var damages = new List<DamageReceivedEvent>();
-            var powers = new List<PowerReceivedEvent>();
-            for (int k = i; k < j; k++)
-            {
-                switch (items[k])
-                {
-                    case DamageRenderItem d: damages.Add(d.Damage); break;
-                    case PowerRenderItem p: powers.Add(p.Power); break;
-                }
-            }
-            result.Add(new SourceGroupRenderItem(
-                key.Value.name, key.Value.id, damages, powers,
-                items[i].CombatNumber, items[i].TurnNumber));
-            i = j;
-        }
-        return result;
-    }
-
-    private static List<RenderItem> BuildRenderItems(IReadOnlyList<LogEvent> history)
-    {
-        var items = new List<RenderItem>();
-        for (int i = 0; i < history.Count; i++)
-        {
-            switch (history[i])
-            {
-                case CardPlayEvent card:
-                {
-                    var damages = new List<DamageReceivedEvent>();
-                    var powers = new List<PowerReceivedEvent>();
-                    var recalls = new List<CardRecallEvent>();
-                    var energies = new List<EnergyDeltaEvent>();
-                    var draws = new List<CardDrawEvent>();
-                    var discards = new List<CardDiscardEvent>();
-                    var exhausts = new List<CardExhaustEvent>();
-                    var blockGains = new List<BlockGainedEvent>();
-                    var upgrades = new List<CardUpgradeEvent>();
-                    var generated = new List<CardGeneratedEvent>();
-                    while (i + 1 < history.Count && TryConsumeCardChild(history[i + 1], card, damages, powers, recalls, energies, draws, discards, exhausts, blockGains, upgrades, generated))
-                        i++;
-                    items.Add(new CardRenderItem(card, damages, powers, recalls, energies, draws, discards, exhausts, blockGains, upgrades, generated));
-                    break;
-                }
-                case DamageReceivedEvent damage:
-                    items.Add(new DamageRenderItem(damage));
-                    break;
-                case RelicProcEvent relic:
-                {
-                    // Game emits damage before the relic flashes, so orphan damage rows
-                    // (no card source, same turn) preceding the proc belong to this relic.
-                    var damages = new List<DamageReceivedEvent>();
-                    while (items.Count > 0
-                           && items[^1] is DamageRenderItem tail
-                           && tail.TurnNumber == relic.TurnNumber
-                           && tail.CombatNumber == relic.CombatNumber
-                           && string.IsNullOrEmpty(tail.Damage.SourceCardName))
-                    {
-                        damages.Insert(0, tail.Damage);
-                        items.RemoveAt(items.Count - 1);
-                    }
-                    var powers = new List<PowerReceivedEvent>();
-                    var energies = new List<EnergyDeltaEvent>();
-                    while (i + 1 < history.Count
-                           && history[i + 1].TurnNumber == relic.TurnNumber
-                           && history[i + 1].CombatNumber == relic.CombatNumber
-                           && (history[i + 1] is PowerReceivedEvent or EnergyDeltaEvent
-                               || (history[i + 1] is DamageReceivedEvent dd
-                                   && string.IsNullOrEmpty(dd.SourceCardName))))
-                    {
-                        switch (history[i + 1])
-                        {
-                            case DamageReceivedEvent d: damages.Add(d); break;
-                            case PowerReceivedEvent p: powers.Add(p); break;
-                            case EnergyDeltaEvent e: energies.Add(e); break;
-                        }
-                        i++;
-                    }
-                    items.Add(new RelicRenderItem(relic, damages, powers, energies));
-                    break;
-                }
-                case PowerReceivedEvent power:
-                    items.Add(new PowerRenderItem(power));
-                    break;
-                case EnergyDeltaEvent energy:
-                    items.Add(new EnergyRenderItem(energy));
-                    break;
-                case CardRecallEvent recall:
-                    items.Add(new RecallRenderItem(recall));
-                    break;
-                case CardDrawEvent draw:
-                    items.Add(new DrawRenderItem(draw));
-                    break;
-                case CardDiscardEvent discard:
-                    items.Add(new DiscardRenderItem(discard));
-                    break;
-                case CardExhaustEvent exhaust:
-                    items.Add(new ExhaustRenderItem(exhaust));
-                    break;
-                case CardAfflictionEvent affliction:
-                    items.Add(new AfflictionRenderItem(affliction));
-                    break;
-                case BlockGainedEvent block:
-                    items.Add(new BlockGainedRenderItem(block));
-                    break;
-                case PotionUsedEvent potion:
-                {
-                    var pDamages = new List<DamageReceivedEvent>();
-                    var pPowers = new List<PowerReceivedEvent>();
-                    var pBlocks = new List<BlockGainedEvent>();
-                    var pEnergies = new List<EnergyDeltaEvent>();
-                    var pUpgrades = new List<CardUpgradeEvent>();
-                    var pGenerated = new List<CardGeneratedEvent>();
-                    while (i + 1 < history.Count
-                           && TryConsumePotionChild(history[i + 1], potion, pDamages, pPowers, pBlocks, pEnergies, pUpgrades, pGenerated))
-                        i++;
-                    items.Add(new PotionRenderItem(potion, pDamages, pPowers, pBlocks, pEnergies, pUpgrades, pGenerated));
-                    break;
-                }
-                case CardUpgradeEvent upgrade:
-                    items.Add(new UpgradeRenderItem(upgrade));
-                    break;
-                case CardGeneratedEvent gen:
-                    items.Add(new GeneratedRenderItem(gen));
-                    break;
-            }
-        }
-        return items;
-    }
 
     private static bool TryConsumeCardChild(
         LogEvent evt, CardPlayEvent card,
@@ -692,7 +706,7 @@ public partial class AdventureLogPanel : Control
 
         try
         {
-            inspectScreen.Open(new List<CardModel> { card }, 0);
+            inspectScreen.Open([card], 0);
         }
         catch (Exception e)
         {

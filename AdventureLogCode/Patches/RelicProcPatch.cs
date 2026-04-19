@@ -23,8 +23,8 @@ public static class RelicProcPatch
             OwnerResolver.Resolve(ownerNetId, out var ownerName, out var isLocal);
 
             var ownerCreatureId = __instance.Owner?.Creature?.CombatId;
-            var targetNames = new List<string>();
-            var targetIds = new List<uint?>();
+            List<string> targetNames = [];
+            List<uint?> targetIds = [];
             if (__0 is not null)
             {
                 foreach (var c in __0)

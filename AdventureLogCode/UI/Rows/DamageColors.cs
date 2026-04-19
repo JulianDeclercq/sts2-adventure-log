@@ -12,7 +12,7 @@ internal static class DamageColors
 
     public static List<Label> AppendDamageLabels(Container target, int hpLost, int blocked, bool killed)
     {
-        var labels = new List<Label>();
+        List<Label> labels = [];
 
         if (hpLost > 0)
             labels.Add(AddLabel(target, $" -{hpLost} HP", HpLost));
