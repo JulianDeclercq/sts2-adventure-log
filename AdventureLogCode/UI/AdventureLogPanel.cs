@@ -230,6 +230,8 @@ public partial class AdventureLogPanel : Control
                     _list.AddChild(new EnergySubRow(e, _highlighter, showSource: false));
                 foreach (var r in c.Recalls)
                     _list.AddChild(new CardRecallRow(r, OpenInspectScreen));
+                foreach (var d in c.Draws)
+                    _list.AddChild(new CardDrawRow(d, OpenInspectScreen));
                 break;
             case DamageRenderItem d:
                 _list.AddChild(new DamageEntryRow(d.Damage, _highlighter));
@@ -254,6 +256,9 @@ public partial class AdventureLogPanel : Control
                 break;
             case RecallRenderItem r:
                 _list.AddChild(new CardRecallRow(r.Recall, OpenInspectScreen));
+                break;
+            case DrawRenderItem d:
+                _list.AddChild(new CardDrawRow(d.Draw, OpenInspectScreen));
                 break;
             case SourceGroupRenderItem g:
                 _list.AddChild(new SourceHeaderRow(g.SourceName, g.SourceCombatId, _highlighter));
@@ -302,7 +307,8 @@ public partial class AdventureLogPanel : Control
         IReadOnlyList<DamageReceivedEvent> Damages,
         IReadOnlyList<PowerReceivedEvent> Powers,
         IReadOnlyList<CardRecallEvent> Recalls,
-        IReadOnlyList<EnergyDeltaEvent> Energies)
+        IReadOnlyList<EnergyDeltaEvent> Energies,
+        IReadOnlyList<CardDrawEvent> Draws)
         : RenderItem(Card.CombatNumber, Card.TurnNumber);
     private sealed record DamageRenderItem(DamageReceivedEvent Damage)
         : RenderItem(Damage.CombatNumber, Damage.TurnNumber);
@@ -318,6 +324,8 @@ public partial class AdventureLogPanel : Control
         : RenderItem(Energy.CombatNumber, Energy.TurnNumber);
     private sealed record RecallRenderItem(CardRecallEvent Recall)
         : RenderItem(Recall.CombatNumber, Recall.TurnNumber);
+    private sealed record DrawRenderItem(CardDrawEvent Draw)
+        : RenderItem(Draw.CombatNumber, Draw.TurnNumber);
     private sealed record SourceGroupRenderItem(
         string SourceName, uint? SourceCombatId,
         IReadOnlyList<DamageReceivedEvent> Damages,
@@ -398,9 +406,10 @@ public partial class AdventureLogPanel : Control
                     var powers = new List<PowerReceivedEvent>();
                     var recalls = new List<CardRecallEvent>();
                     var energies = new List<EnergyDeltaEvent>();
-                    while (i + 1 < history.Count && TryConsumeCardChild(history[i + 1], card, damages, powers, recalls, energies))
+                    var draws = new List<CardDrawEvent>();
+                    while (i + 1 < history.Count && TryConsumeCardChild(history[i + 1], card, damages, powers, recalls, energies, draws))
                         i++;
-                    items.Add(new CardRenderItem(card, damages, powers, recalls, energies));
+                    items.Add(new CardRenderItem(card, damages, powers, recalls, energies, draws));
                     break;
                 }
                 case DamageReceivedEvent damage:
@@ -449,6 +458,9 @@ public partial class AdventureLogPanel : Control
                 case CardRecallEvent recall:
                     items.Add(new RecallRenderItem(recall));
                     break;
+                case CardDrawEvent draw:
+                    items.Add(new DrawRenderItem(draw));
+                    break;
             }
         }
         return items;
@@ -457,7 +469,8 @@ public partial class AdventureLogPanel : Control
     private static bool TryConsumeCardChild(
         LogEvent evt, CardPlayEvent card,
         List<DamageReceivedEvent> damages, List<PowerReceivedEvent> powers,
-        List<CardRecallEvent> recalls, List<EnergyDeltaEvent> energies)
+        List<CardRecallEvent> recalls, List<EnergyDeltaEvent> energies,
+        List<CardDrawEvent> draws)
     {
         if (evt.TurnNumber != card.TurnNumber) return false;
         if (evt.CombatNumber != card.CombatNumber) return false;
@@ -478,6 +491,9 @@ public partial class AdventureLogPanel : Control
                 return true;
             case CardRecallEvent r when r.OwnerNetId == card.OwnerNetId:
                 recalls.Add(r);
+                return true;
+            case CardDrawEvent d when d.OwnerNetId == card.OwnerNetId:
+                draws.Add(d);
                 return true;
             default:
                 return false;

@@ -89,6 +89,18 @@ public static class AdventureLogTracker
         Append(e);
     }
 
+    public static void RecordCardDraw(
+        string drawnCardName, CardModel? drawnCard,
+        ulong? ownerNetId, string ownerName, bool isLocal)
+    {
+        _orderCounter++;
+        var e = new CardDrawEvent(
+            drawnCardName, drawnCard,
+            ownerNetId, ownerName, isLocal,
+            CurrentTurn, _orderCounter, CurrentCombat);
+        Append(e);
+    }
+
     public static void RecordPowerReceived(
         string powerId, string powerTitle, PowerType type, PowerStackType stackType,
         int delta, int newTotal,
