@@ -34,6 +34,11 @@ public partial class AdventureLogPanel : Control
     private int _processedHistoryCount;
     private int _currentTopTurn = -1;
 
+    // Sticky-top autoscroll: only jump to top on new events if user was already parked there.
+    // Otherwise, preserve the viewport by shifting ScrollVertical by the layout delta caused
+    // by inserting new rows above the visible area.
+    private const int StickyTopThresholdPx = 8;
+
     private static AdventureLogPanel? _instance;
     public static AdventureLogPanel? Instance => _instance;
 
@@ -204,11 +209,12 @@ public partial class AdventureLogPanel : Control
         _processedHistoryCount = 0;
         _currentTopTurn = -1;
         ProcessNewEvents();
+        CallDeferred(nameof(ScrollToTop));
     }
 
     // Incremental path. Consumes any history entries past _processedHistoryCount without
     // touching sealed prior rows. O(new events), not O(|history|).
-    private void ProcessNewEvents()
+    private async void ProcessNewEvents()
     {
         UpdateStatus();
         var history = AdventureLogTracker.History;
@@ -222,6 +228,10 @@ public partial class AdventureLogPanel : Control
 
         if (_processedHistoryCount >= history.Count) return;
 
+        bool wasPinnedToTop = _scroll.ScrollVertical <= StickyTopThresholdPx;
+        double preMax = _scroll.GetVScrollBar().MaxValue;
+        int preValue = _scroll.ScrollVertical;
+
         while (_processedHistoryCount < history.Count)
         {
             var evt = history[_processedHistoryCount];
@@ -229,7 +239,24 @@ public partial class AdventureLogPanel : Control
             IngestEvent(evt);
         }
 
-        CallDeferred(nameof(ScrollToTop));
+        if (wasPinnedToTop)
+        {
+            CallDeferred(nameof(ScrollToTop));
+            return;
+        }
+
+        // Rows insert at the top of _list, so the viewport drifts unless we compensate. Wait for
+        // layout to apply (Container sort + size propagation), then shift ScrollVertical by the
+        // MaxValue delta so the same rows stay under the user's gaze.
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        if (!IsInstanceValid(this)) return;
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        if (!IsInstanceValid(this)) return;
+
+        var newMax = _scroll.GetVScrollBar().MaxValue;
+        var delta = newMax - preMax;
+        if (delta > 0)
+            _scroll.ScrollVertical = preValue + (int)delta;
     }
 
     private void IngestEvent(LogEvent evt)
