@@ -101,6 +101,18 @@ public static class AdventureLogTracker
         Append(e);
     }
 
+    public static void RecordCardDiscard(
+        string discardedCardName, CardModel? discardedCard,
+        ulong? ownerNetId, string ownerName, bool isLocal)
+    {
+        _orderCounter++;
+        var e = new CardDiscardEvent(
+            discardedCardName, discardedCard,
+            ownerNetId, ownerName, isLocal,
+            CurrentTurn, _orderCounter, CurrentCombat);
+        Append(e);
+    }
+
     public static void RecordPowerReceived(
         string powerId, string powerTitle, PowerType type, PowerStackType stackType,
         int delta, int newTotal,
