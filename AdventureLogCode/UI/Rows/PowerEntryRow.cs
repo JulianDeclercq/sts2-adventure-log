@@ -6,7 +6,7 @@ using MegaCrit.Sts2.Core.Nodes.HoverTips;
 
 namespace AdventureLog.AdventureLogCode.UI.Rows;
 
-public partial class PowerEntryRow : HBoxContainer
+public partial class PowerEntryRow : VBoxContainer
 {
     private const float IconSize = 20;
 
@@ -21,7 +21,7 @@ public partial class PowerEntryRow : HBoxContainer
 
     public override void _Ready()
     {
-        AddThemeConstantOverride("separation", 4);
+        AddThemeConstantOverride("separation", 0);
         MouseFilter = MouseFilterEnum.Stop;
         SizeFlagsHorizontal = SizeFlags.ShrinkBegin;
 
@@ -31,21 +31,30 @@ public partial class PowerEntryRow : HBoxContainer
             ? PowerColors.Negative
             : (_entry.Type == PowerType.Buff ? PowerColors.Buff : PowerColors.Debuff);
 
-        if (!string.IsNullOrEmpty(_entry.OwnerCreatureName))
+        var hasOwner = !string.IsNullOrEmpty(_entry.OwnerCreatureName);
+        if (hasOwner)
         {
-            labels.Add(AppendLabel($"{NameTruncator.Short(_entry.OwnerCreatureName)}:", PowerColors.Target));
+            var header = MakeRow();
+            AddChild(header);
+            labels.Add(AppendLabelTo(header, $"{NameTruncator.Short(_entry.OwnerCreatureName)}:", PowerColors.Target));
         }
+
+        var body = MakeRow();
+        AddChild(body);
+
+        // Indent body under the owner header so it reads as a sub-row.
+        if (hasOwner)
+            body.AddChild(new Label { Text = "    " });
 
         if (_entry.Icon is not null)
         {
-            var rect = new TextureRect
+            body.AddChild(new TextureRect
             {
                 Texture = _entry.Icon,
                 CustomMinimumSize = new Vector2(IconSize, IconSize),
                 ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
                 StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
-            };
-            AddChild(rect);
+            });
         }
 
         var shortTitle = NameTruncator.Short(_entry.PowerTitle);
@@ -59,11 +68,11 @@ public partial class PowerEntryRow : HBoxContainer
         if (!string.IsNullOrEmpty(_entry.OwnerName))
             nameText += $" [{_entry.OwnerName}]";
 
-        labels.Add(AppendLabel(nameText, powerColor));
+        labels.Add(AppendLabelTo(body, nameText, powerColor));
 
         if (_entry.ApplierCombatId.HasValue && _entry.ApplierCombatId != _entry.OwnerCreatureCombatId)
         {
-            labels.Add(AppendLabel($"\u2190 {NameTruncator.Short(_entry.ApplierName)}", PowerColors.Target));
+            labels.Add(AppendLabelTo(body, $"\u2190 {NameTruncator.Short(_entry.ApplierName)}", PowerColors.Target));
         }
 
         var originalColors = labels.Select(l => l.GetThemeColor("font_color")).ToList();
@@ -100,12 +109,21 @@ public partial class PowerEntryRow : HBoxContainer
         };
     }
 
-    private Label AppendLabel(string text, Color color)
+    private static HBoxContainer MakeRow()
+    {
+        var row = new HBoxContainer();
+        row.AddThemeConstantOverride("separation", 4);
+        row.MouseFilter = MouseFilterEnum.Pass;
+        row.SizeFlagsHorizontal = SizeFlags.ShrinkBegin;
+        return row;
+    }
+
+    private static Label AppendLabelTo(HBoxContainer parent, string text, Color color)
     {
         var label = new Label();
         label.Text = text;
         label.AddThemeColorOverride("font_color", color);
-        AddChild(label);
+        parent.AddChild(label);
         return label;
     }
 }
