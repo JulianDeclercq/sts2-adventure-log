@@ -214,7 +214,7 @@ public partial class AdventureLogPanel : Control
 
     // Incremental path. Consumes any history entries past _processedHistoryCount without
     // touching sealed prior rows. O(new events), not O(|history|).
-    private async void ProcessNewEvents()
+    private void ProcessNewEvents()
     {
         UpdateStatus();
         var history = AdventureLogTracker.History;
@@ -229,7 +229,7 @@ public partial class AdventureLogPanel : Control
         if (_processedHistoryCount >= history.Count) return;
 
         bool wasPinnedToTop = _scroll.ScrollVertical <= StickyTopThresholdPx;
-        double preMax = _scroll.GetVScrollBar().MaxValue;
+        double preHeight = MeasureListContentHeight();
         int preValue = _scroll.ScrollVertical;
 
         while (_processedHistoryCount < history.Count)
@@ -245,18 +245,28 @@ public partial class AdventureLogPanel : Control
             return;
         }
 
-        // Rows insert at the top of _list, so the viewport drifts unless we compensate. Wait for
-        // layout to apply (Container sort + size propagation), then shift ScrollVertical by the
-        // MaxValue delta so the same rows stay under the user's gaze.
-        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
-        if (!IsInstanceValid(this)) return;
-        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
-        if (!IsInstanceValid(this)) return;
-
-        var newMax = _scroll.GetVScrollBar().MaxValue;
-        var delta = newMax - preMax;
+        // Rows insert at the top of _list, so the viewport drifts unless we compensate.
+        // MaxValue won't update until the next layout pass, so sum min sizes ourselves
+        // synchronously and shift ScrollVertical now — no one-frame jump.
+        double newHeight = MeasureListContentHeight();
+        double delta = newHeight - preHeight;
         if (delta > 0)
             _scroll.ScrollVertical = preValue + (int)delta;
+    }
+
+    private double MeasureListContentHeight()
+    {
+        var children = _list.GetChildren();
+        if (children.Count == 0) return 0;
+        double h = 0;
+        foreach (var child in children)
+        {
+            if (child is Control c)
+                h += c.GetCombinedMinimumSize().Y;
+        }
+        int separation = _list.GetThemeConstant("separation");
+        h += separation * (children.Count - 1);
+        return h;
     }
 
     private void IngestEvent(LogEvent evt)
