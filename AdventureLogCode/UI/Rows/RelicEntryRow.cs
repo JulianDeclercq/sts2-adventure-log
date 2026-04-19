@@ -44,7 +44,7 @@ public partial class RelicEntryRow : HBoxContainer
             }
         }
 
-        var labels = new List<Label>();
+        List<Label> labels = [];
 
         var shortName = NameTruncator.Short(_entry.RelicName);
         var nameText = string.IsNullOrEmpty(_entry.OwnerName)

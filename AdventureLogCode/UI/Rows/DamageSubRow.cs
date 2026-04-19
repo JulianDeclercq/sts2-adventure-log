@@ -36,7 +36,7 @@ public partial class DamageSubRow : HBoxContainer
 
         AddChild(new Label { Text = "    " });
 
-        var labels = new List<Label>();
+        List<Label> labels = [];
 
         var victimLabel = new Label();
         victimLabel.Text = $"→ {NameTruncator.Short(_victimName)}:";

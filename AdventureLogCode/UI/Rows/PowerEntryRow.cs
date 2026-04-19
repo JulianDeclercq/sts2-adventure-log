@@ -25,7 +25,7 @@ public partial class PowerEntryRow : VBoxContainer
         MouseFilter = MouseFilterEnum.Stop;
         SizeFlagsHorizontal = SizeFlags.ShrinkBegin;
 
-        var labels = new List<Label>();
+        List<Label> labels = [];
         var isNegative = _entry.StackType == PowerStackType.Counter && _entry.Delta < 0;
         var powerColor = isNegative
             ? PowerColors.Negative

@@ -37,7 +37,7 @@ public partial class PotionUsedRow : HBoxContainer
             });
         }
 
-        var labels = new List<Label>();
+        List<Label> labels = [];
 
         var shortName = NameTruncator.Short(_entry.PotionTitle);
         var nameText = string.IsNullOrEmpty(_entry.OwnerName)

@@ -249,7 +249,7 @@ public partial class AdventureLogPanel : Control
         // Relic back-absorption: orphan damage rows logged just before a relic flash belong to it.
         if (newItem is RelicRenderItem relic)
         {
-            var absorbedDamages = new List<DamageReceivedEvent>();
+            List<DamageReceivedEvent> absorbedDamages = [];
             while (_items.Count > 0
                    && _items[^1] is DamageRenderItem dr
                    && dr.TurnNumber == relic.TurnNumber
@@ -413,7 +413,7 @@ public partial class AdventureLogPanel : Control
 
     private List<Node> BuildRowsFor(RenderItem item)
     {
-        var rows = new List<Node>();
+        List<Node> rows = [];
         switch (item)
         {
             case CardRenderItem c:
@@ -512,8 +512,8 @@ public partial class AdventureLogPanel : Control
 
     private static List<VictimGroup> GroupDamagesByVictim(IReadOnlyList<DamageReceivedEvent> damages)
     {
-        var result = new List<VictimGroup>();
-        var indexByKey = new Dictionary<string, int>();
+        List<VictimGroup> result = [];
+        Dictionary<string, int> indexByKey = [];
         foreach (var d in damages)
         {
             var key = d.VictimCombatId?.ToString() ?? $"name:{d.VictimName}";
@@ -706,7 +706,7 @@ public partial class AdventureLogPanel : Control
 
         try
         {
-            inspectScreen.Open(new List<CardModel> { card }, 0);
+            inspectScreen.Open([card], 0);
         }
         catch (Exception e)
         {

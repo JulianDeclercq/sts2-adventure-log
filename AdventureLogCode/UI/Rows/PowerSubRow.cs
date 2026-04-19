@@ -26,7 +26,7 @@ public partial class PowerSubRow : HBoxContainer
 
         AddChild(new Label { Text = "    " });
 
-        var labels = new List<Label>();
+        List<Label> labels = [];
         var isNegative = _entry.StackType == PowerStackType.Counter && _entry.Delta < 0;
         var powerColor = isNegative
             ? PowerColors.Negative
