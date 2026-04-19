@@ -3,7 +3,7 @@
   "name": "Adventure Log",
   "author": "Julian",
   "description": "Tracks and displays all cards played during a run as a simple scrollable text log. Press F to toggle.",
-  "version": "v0.1.0",
+  "version": "v0.2.0",
   "has_pck": false,
   "has_dll": true,
   "dependencies": [],
