@@ -15,8 +15,10 @@ Implications:
 - In MP, daughter of the wind relic didnt show on hover when hovering ni the panel, it just gave the tooltip (didnt hover on bar itself)
 - game felt kind of laggy at combat 28 , do we have any leaks or anything? not sure if it's the mod. Think it's bc we were playing a shiv build. Could we
 do the ui on a separate thread instead so it's not blocking the main game thread
-- When scrolling / have scrolled, don't autoscroll up when a new entry i sadded (from your multiplayer)
+- When scrolling / have scrolled, don't autoscroll up when a new entry is added (from your multiplayer)
 - When hovering ove rpartners relic, dont show the card on top since it blocks the tooltip (see screenshot)
+- Shiv damage didnt exactly show how much it did (bc of power that gives more shiv damage if it's first)
+- +1 block from afterimage power didnt hsow that it was from afterimage in the log
 
 ## Maybe later
 - Card Retained — low signal; only useful for Retain-mechanic decks. Revisit if a class makes it central.
