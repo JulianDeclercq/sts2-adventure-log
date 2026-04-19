@@ -5,6 +5,7 @@ using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.Helpers;
 using MegaCrit.Sts2.Core.HoverTips;
+using MegaCrit.Sts2.Core.Models.Powers;
 
 namespace AdventureLog.AdventureLogCode.Patches;
 
@@ -23,6 +24,22 @@ public static class EnergyDeltaPatch
             OwnerResolver.Resolve(ownerNetId, out var ownerName, out var isLocal);
 
             var playerCombatId = __1?.Creature?.CombatId;
+
+            // EnergyNextTurnPower.AfterEnergyReset calls GainEnergy BEFORE removing the
+            // power, so the power is still on the creature here. If amount matches the
+            // delta, this gain came from that power — pop the scheduled source recorded
+            // at apply time so the log row can be attributed ("from Invoke").
+            string? sourceCardName = null;
+            if (playerCombatId.HasValue && __1?.Creature is not null)
+            {
+                var pendingPower = __1.Creature.GetPower<EnergyNextTurnPower>();
+                if (pendingPower is not null && pendingPower.Amount == delta
+                    && AdventureLogTracker.ScheduledEnergySourceByPlayer.TryGetValue(playerCombatId.Value, out var srcName))
+                {
+                    sourceCardName = srcName;
+                    AdventureLogTracker.ScheduledEnergySourceByPlayer.Remove(playerCombatId.Value);
+                }
+            }
 
             Texture2D? icon = null;
             IHoverTip? hoverTip = null;
@@ -44,7 +61,8 @@ public static class EnergyDeltaPatch
 
             AdventureLogTracker.RecordEnergyDelta(
                 delta, icon, hoverTip, playerCombatId,
-                ownerNetId, ownerName, isLocal);
+                ownerNetId, ownerName, isLocal,
+                sourceCardName);
         }
         catch (Exception e)
         {

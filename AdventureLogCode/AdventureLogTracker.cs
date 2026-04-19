@@ -15,6 +15,11 @@ public static class AdventureLogTracker
     private static int _orderCounter;
     private static bool _firstPlayerTurn;
 
+    // Source card name for a pending "next turn" energy gain, keyed by player CombatId.
+    // Populated when EnergyNextTurnPower is applied (PowerReceivedPatch). Consumed next
+    // turn when PlayerCmd.GainEnergy fires from EnergyNextTurnPower.AfterEnergyReset.
+    internal static readonly Dictionary<uint, string> ScheduledEnergySourceByPlayer = new();
+
     public static void RecordCardPlay(
         string cardName, CardModel? card,
         ulong? ownerNetId, string ownerName, bool isLocal,
@@ -60,13 +65,15 @@ public static class AdventureLogTracker
 
     public static void RecordEnergyDelta(
         int delta, Texture2D? icon, IHoverTip? hoverTip, uint? playerCombatId,
-        ulong? ownerNetId, string ownerName, bool isLocal)
+        ulong? ownerNetId, string ownerName, bool isLocal,
+        string? sourceCardName = null)
     {
         _orderCounter++;
         var e = new EnergyDeltaEvent(
             delta, icon, hoverTip, playerCombatId,
             ownerNetId, ownerName, isLocal,
-            CurrentTurn, _orderCounter, CurrentCombat);
+            CurrentTurn, _orderCounter, CurrentCombat,
+            sourceCardName);
         Append(e);
     }
 
@@ -122,6 +129,7 @@ public static class AdventureLogTracker
         _orderCounter = 0;
         _firstPlayerTurn = true;
         History.Clear();
+        ScheduledEnergySourceByPlayer.Clear();
         OnHistoryChanged?.Invoke();
     }
 

@@ -14,6 +14,10 @@ A Slay the Spire 2 mod that tracks and displays cards played during a run as a t
 
 Before scoping new work, read `plans/roadmap.md`. It defines core goals (multiplayer-first), open questions, sequencing, and non-goals. If a new request conflicts with it, surface the conflict; don't silently drift.
 
+## Analyze Fixes Generically
+
+When diagnosing a bug or feature request triggered by a specific card, relic, power, or event, look for the underlying game mechanism (e.g., `EnergyNextTurnPower`, `CardPileCmd.Add`, `PowerModel.AfterEnergyReset`) and design the fix around that mechanism — not around the one card. If the same mechanism drives other cards/relics/events, the fix should cover them automatically. Only narrow to the specific case when the general fix is infeasible, and say so explicitly.
+
 ## Git Conventions
 
 - Commit messages should be very concise (short single line)

@@ -5,6 +5,7 @@ using MegaCrit.Sts2.Core.Combat.History;
 using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Entities.Creatures;
 using MegaCrit.Sts2.Core.Models;
+using MegaCrit.Sts2.Core.Models.Powers;
 
 namespace AdventureLog.AdventureLogCode.Patches;
 
@@ -15,6 +16,10 @@ public static class PowerReceivedPatch
     // power.Owner = target, so on first application power.Owner is null here. Stash
     // the target from the Apply prefix below and read it as fallback.
     internal static Creature? PendingApplyTarget;
+
+    // Source card for the in-flight PowerCmd.Apply call. Used to attribute delayed
+    // effects (e.g. EnergyNextTurnPower) back to the card that scheduled them.
+    internal static CardModel? PendingApplySourceCard;
 
     [HarmonyPostfix]
     public static void Postfix(CombatState __0, PowerModel __1, decimal __2, Creature? __3)
@@ -40,9 +45,21 @@ public static class PowerReceivedPatch
             var icon = power.Icon;
 
             var ownerCreature = power.Owner ?? PendingApplyTarget;
+            var sourceCard = PendingApplySourceCard;
             PendingApplyTarget = null;
+            PendingApplySourceCard = null;
             var ownerCreatureName = ownerCreature?.Name ?? "";
             var ownerCreatureCombatId = ownerCreature?.CombatId;
+
+            // Track delayed-energy scheduling so next turn's GainEnergy can be attributed
+            // back to the card that applied this power. Generic over any card/relic that
+            // applies EnergyNextTurnPower.
+            if (power is EnergyNextTurnPower && ownerCreatureCombatId.HasValue)
+            {
+                var srcName = sourceCard?.Title;
+                if (!string.IsNullOrEmpty(srcName))
+                    AdventureLogTracker.ScheduledEnergySourceByPlayer[ownerCreatureCombatId.Value] = srcName;
+            }
 
             var applierName = applier?.Name;
             var applierCombatId = applier?.CombatId;
@@ -70,8 +87,9 @@ public static class PowerReceivedPatch
 public static class PowerApplyTargetStashPatch
 {
     [HarmonyPrefix]
-    public static void Prefix(Creature __1)
+    public static void Prefix(Creature __1, CardModel __4)
     {
         PowerReceivedPatch.PendingApplyTarget = __1;
+        PowerReceivedPatch.PendingApplySourceCard = __4;
     }
 }
