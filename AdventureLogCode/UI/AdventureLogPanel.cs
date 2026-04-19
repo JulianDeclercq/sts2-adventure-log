@@ -226,6 +226,8 @@ public partial class AdventureLogPanel : Control
                         g.HpLost, g.Blocked, g.Killed, _highlighter));
                 foreach (var p in c.Powers)
                     _list.AddChild(new PowerSubRow(p, _highlighter));
+                foreach (var r in c.Recalls)
+                    _list.AddChild(new CardRecallRow(r, OpenInspectScreen));
                 break;
             case DamageRenderItem d:
                 _list.AddChild(new DamageEntryRow(d.Damage, _highlighter));
@@ -296,7 +298,8 @@ public partial class AdventureLogPanel : Control
     private sealed record CardRenderItem(
         CardPlayEvent Card,
         IReadOnlyList<DamageReceivedEvent> Damages,
-        IReadOnlyList<PowerReceivedEvent> Powers)
+        IReadOnlyList<PowerReceivedEvent> Powers,
+        IReadOnlyList<CardRecallEvent> Recalls)
         : RenderItem(Card.CombatNumber, Card.TurnNumber);
     private sealed record DamageRenderItem(DamageReceivedEvent Damage)
         : RenderItem(Damage.CombatNumber, Damage.TurnNumber);
@@ -390,9 +393,10 @@ public partial class AdventureLogPanel : Control
                 {
                     var damages = new List<DamageReceivedEvent>();
                     var powers = new List<PowerReceivedEvent>();
-                    while (i + 1 < history.Count && TryConsumeCardChild(history[i + 1], card, damages, powers))
+                    var recalls = new List<CardRecallEvent>();
+                    while (i + 1 < history.Count && TryConsumeCardChild(history[i + 1], card, damages, powers, recalls))
                         i++;
-                    items.Add(new CardRenderItem(card, damages, powers));
+                    items.Add(new CardRenderItem(card, damages, powers, recalls));
                     break;
                 }
                 case DamageReceivedEvent damage:
@@ -448,7 +452,8 @@ public partial class AdventureLogPanel : Control
 
     private static bool TryConsumeCardChild(
         LogEvent evt, CardPlayEvent card,
-        List<DamageReceivedEvent> damages, List<PowerReceivedEvent> powers)
+        List<DamageReceivedEvent> damages, List<PowerReceivedEvent> powers,
+        List<CardRecallEvent> recalls)
     {
         if (evt.TurnNumber != card.TurnNumber) return false;
         if (evt.CombatNumber != card.CombatNumber) return false;
@@ -461,6 +466,9 @@ public partial class AdventureLogPanel : Control
             case PowerReceivedEvent p
                 when p.ApplierCombatId.HasValue && p.ApplierCombatId == card.PlayerCombatId:
                 powers.Add(p);
+                return true;
+            case CardRecallEvent r when r.OwnerNetId == card.OwnerNetId:
+                recalls.Add(r);
                 return true;
             default:
                 return false;
