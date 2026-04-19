@@ -62,26 +62,33 @@ public static class DamageReceivedPatch
     }
 
     [HarmonyPostfix]
-    public static void Postfix(Task<IEnumerable<DamageResult>> __result, Creature? __4, CardModel? __5)
+    public static void Postfix(ref Task<IEnumerable<DamageResult>> __result, Creature? __4, CardModel? __5)
     {
-        if (__result is null) return;
-        var dealer = __4;
-        var cardSource = __5;
-        __result.ContinueWith(t =>
+        var original = __result;
+        if (original is null) return;
+        __result = Continuation(original, __4, __5);
+    }
+
+    // async/await marshals back to Godot's main-thread SynchronizationContext, so History
+    // appends stay on the main thread. Previously `ContinueWith(..., ExecuteSynchronously)`
+    // ran on whatever thread completed the task, racing UI reads.
+    private static async Task<IEnumerable<DamageResult>> Continuation(
+        Task<IEnumerable<DamageResult>> original, Creature? dealer, CardModel? cardSource)
+    {
+        var results = await original;
+        try
         {
-            try
+            if (results is null) return results!;
+            foreach (var r in results)
             {
-                if (!t.IsCompletedSuccessfully || t.Result is null) return;
-                foreach (var r in t.Result)
-                {
-                    if (r is null) continue;
-                    RecordOne(r.Receiver, dealer, r, cardSource);
-                }
+                if (r is null) continue;
+                RecordOne(r.Receiver, dealer, r, cardSource);
             }
-            catch (Exception e)
-            {
-                GD.PrintErr($"[AdventureLog] Error recording damage: {e.Message}");
-            }
-        }, TaskContinuationOptions.ExecuteSynchronously);
+        }
+        catch (Exception e)
+        {
+            GD.PrintErr($"[AdventureLog] Error recording damage: {e.Message}");
+        }
+        return results;
     }
 }
