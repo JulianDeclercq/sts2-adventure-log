@@ -168,7 +168,8 @@ public static class AdventureLogTracker
         string ownerCreatureName, uint? ownerCreatureCombatId,
         string? applierName, uint? applierCombatId,
         Texture2D? icon, PowerModel? power,
-        ulong? ownerNetId, string ownerName, bool isLocal)
+        ulong? ownerNetId, string ownerName, bool isLocal,
+        string? sourceCardName = null)
     {
         _orderCounter++;
         var e = new PowerReceivedEvent(
@@ -176,7 +177,8 @@ public static class AdventureLogTracker
             ownerCreatureName, ownerCreatureCombatId,
             applierName, applierCombatId, icon, power,
             ownerNetId, ownerName, isLocal,
-            CurrentTurn, _orderCounter, CurrentCombat);
+            CurrentTurn, _orderCounter, CurrentCombat,
+            sourceCardName);
         Append(e);
     }
 

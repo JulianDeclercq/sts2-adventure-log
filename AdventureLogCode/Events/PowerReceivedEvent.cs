@@ -22,5 +22,6 @@ public sealed record PowerReceivedEvent(
     bool IsLocal,
     int TurnNumber,
     int OrderInTurn,
-    int CombatNumber)
+    int CombatNumber,
+    string? SourceCardName = null)
     : LogEvent(OwnerNetId, OwnerName, IsLocal, TurnNumber, OrderInTurn, CombatNumber);

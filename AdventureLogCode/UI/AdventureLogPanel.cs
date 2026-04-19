@@ -534,8 +534,9 @@ public partial class AdventureLogPanel : Control
                 damages.Add(d);
                 return true;
             case PowerReceivedEvent p
-                when (p.ApplierCombatId.HasValue && p.ApplierCombatId == card.PlayerCombatId)
-                     || (p.OwnerCreatureCombatId.HasValue && p.OwnerCreatureCombatId == card.PlayerCombatId):
+                when !string.IsNullOrEmpty(p.SourceCardName) && p.SourceCardName == card.CardName
+                     && ((p.ApplierCombatId.HasValue && p.ApplierCombatId == card.PlayerCombatId)
+                         || (p.OwnerCreatureCombatId.HasValue && p.OwnerCreatureCombatId == card.PlayerCombatId)):
                 powers.Add(p);
                 return true;
             case EnergyDeltaEvent e
@@ -554,7 +555,9 @@ public partial class AdventureLogPanel : Control
             case CardExhaustEvent ex when ex.OwnerNetId == card.OwnerNetId:
                 exhausts.Add(ex);
                 return true;
-            case BlockGainedEvent b when b.OwnerNetId == card.OwnerNetId:
+            case BlockGainedEvent b
+                when !string.IsNullOrEmpty(b.SourceCardName) && b.SourceCardName == card.CardName
+                     && b.OwnerNetId == card.OwnerNetId:
                 blockGains.Add(b);
                 return true;
             default:

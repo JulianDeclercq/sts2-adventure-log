@@ -73,7 +73,8 @@ public static class PowerReceivedPatch
                 ownerCreatureName, ownerCreatureCombatId,
                 applierName, applierCombatId,
                 icon, power,
-                ownerNetId, ownerName, isLocal);
+                ownerNetId, ownerName, isLocal,
+                sourceCard?.Title);
         }
         catch (Exception e)
         {
