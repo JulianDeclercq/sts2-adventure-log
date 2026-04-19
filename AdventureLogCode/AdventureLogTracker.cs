@@ -149,6 +149,18 @@ public static class AdventureLogTracker
         Append(e);
     }
 
+    public static void RecordCardUpgrade(
+        string upgradedCardName, CardModel? upgradedCard,
+        ulong? ownerNetId, string ownerName, bool isLocal)
+    {
+        _orderCounter++;
+        var e = new CardUpgradeEvent(
+            upgradedCardName, upgradedCard,
+            ownerNetId, ownerName, isLocal,
+            CurrentTurn, _orderCounter, CurrentCombat);
+        Append(e);
+    }
+
     public static void RecordPotionUsed(
         string potionTitle, PotionModel? potion, Texture2D? icon,
         string? targetName, uint? targetCombatId,
