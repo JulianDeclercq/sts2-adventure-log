@@ -232,6 +232,7 @@ public static class AdventureLogTracker
         _firstPlayerTurn = true;
         History.Clear();
         ScheduledEnergySourceByPlayer.Clear();
+        Patches.PowerReceivedPatch.ApplyStack.Clear();
         OnHistoryChanged?.Invoke();
     }
 

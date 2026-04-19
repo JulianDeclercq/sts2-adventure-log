@@ -14,12 +14,9 @@ public static class PowerReceivedPatch
 {
     // PowerCmd.Apply fires History.PowerReceived BEFORE power.ApplyInternal sets
     // power.Owner = target, so on first application power.Owner is null here. Stash
-    // the target from the Apply prefix below and read it as fallback.
-    internal static Creature? PendingApplyTarget;
-
-    // Source card for the in-flight PowerCmd.Apply call. Used to attribute delayed
-    // effects (e.g. EnergyNextTurnPower) back to the card that scheduled them.
-    internal static CardModel? PendingApplySourceCard;
+    // the target + source card from the Apply prefix below and read them as fallback.
+    // Stack (not two statics) so nested PowerCmd.Apply calls can't clobber an outer frame.
+    internal static readonly Stack<(Creature? Target, CardModel? Source)> ApplyStack = new();
 
     [HarmonyPostfix]
     public static void Postfix(CombatState __0, PowerModel __1, decimal __2, Creature? __3)
@@ -44,10 +41,11 @@ public static class PowerReceivedPatch
             var stackType = power.StackType;
             var icon = power.Icon;
 
-            var ownerCreature = power.Owner ?? PendingApplyTarget;
-            var sourceCard = PendingApplySourceCard;
-            PendingApplyTarget = null;
-            PendingApplySourceCard = null;
+            Creature? stashedTarget = null;
+            CardModel? sourceCard = null;
+            if (ApplyStack.Count > 0)
+                (stashedTarget, sourceCard) = ApplyStack.Pop();
+            var ownerCreature = power.Owner ?? stashedTarget;
             var ownerCreatureName = ownerCreature?.Name ?? "";
             var ownerCreatureCombatId = ownerCreature?.CombatId;
 
@@ -90,7 +88,6 @@ public static class PowerApplyTargetStashPatch
     [HarmonyPrefix]
     public static void Prefix(Creature __1, CardModel __4)
     {
-        PowerReceivedPatch.PendingApplyTarget = __1;
-        PowerReceivedPatch.PendingApplySourceCard = __4;
+        PowerReceivedPatch.ApplyStack.Push((__1, __4));
     }
 }
