@@ -13,11 +13,13 @@ public partial class EnergySubRow : HBoxContainer
 
     private readonly EnergyDeltaEvent _entry;
     private readonly CreatureHighlighter _highlighter;
+    private readonly bool _showSource;
 
-    public EnergySubRow(EnergyDeltaEvent entry, CreatureHighlighter highlighter)
+    public EnergySubRow(EnergyDeltaEvent entry, CreatureHighlighter highlighter, bool showSource = true)
     {
         _entry = entry;
         _highlighter = highlighter;
+        _showSource = showSource;
     }
 
     public override void _Ready()
@@ -44,7 +46,7 @@ public partial class EnergySubRow : HBoxContainer
         label.AddThemeColorOverride("font_color", EnergyColor);
         AddChild(label);
 
-        if (!string.IsNullOrEmpty(_entry.SourceCardName))
+        if (_showSource && !string.IsNullOrEmpty(_entry.SourceCardName))
         {
             var sourceLabel = new Label();
             sourceLabel.Text = $" (from {_entry.SourceCardName})";
