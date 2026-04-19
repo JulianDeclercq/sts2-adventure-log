@@ -1,9 +1,0 @@
-namespace CombatLog.CombatLogCode.Events;
-
-public abstract record LogEvent(
-    ulong? OwnerNetId,
-    string OwnerName,
-    bool IsLocal,
-    int TurnNumber,
-    int OrderInTurn,
-    int CombatNumber);

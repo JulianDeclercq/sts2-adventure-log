@@ -1,4 +1,4 @@
-# Combat Log — StS2 Mod
+# Adventure Log — StS2 Mod
 
 ## Project Overview
 
@@ -7,7 +7,7 @@ A Slay the Spire 2 mod that tracks and displays cards played during a run as a t
 - **Language:** C# / .NET 9.0
 - **Engine:** Godot 4.5.1 (MegaDot variant)
 - **Patching:** HarmonyLib (`0Harmony.dll` from game data)
-- **Mod ID:** `CombatLog`
+- **Mod ID:** `AdventureLog`
 - **affects_gameplay:** `false` (observation-only, safe for multiplayer)
 
 ## Roadmap
@@ -30,7 +30,7 @@ dotnet publish        # Also exports .pck via Godot (requires GodotPath in Direc
 
 **Do NOT dump build output into the conversation.** After running `dotnet build`, report only a one-line summary: `Build ok` / `Build failed: <first error>`. Do not paste warnings, "copying dll", time elapsed, or any other build noise. Check the exit code and the error count. If you need warning/error detail to fix something, grep the output file for `error CS` — don't tail the whole log.
 
-The build auto-deploys to: `<Sts2Path>/mods/CombatLog/`
+The build auto-deploys to: `<Sts2Path>/mods/AdventureLog/`
 
 Game path is auto-discovered via `Sts2PathDiscovery.props` (Steam registry + common paths). Override manually in `Directory.Build.props` if needed:
 ```xml
@@ -39,7 +39,7 @@ Game path is auto-discovered via `Sts2PathDiscovery.props` (Steam registry + com
 
 `Directory.Build.props` is gitignored (machine-specific paths).
 
-## Mod Manifest (CombatLog.json)
+## Mod Manifest (AdventureLog.json)
 
 | Field | Value | Notes |
 |-------|-------|-------|
@@ -177,7 +177,7 @@ When the user shows a screenshot of an existing game UI component and asks to ma
 **Example:** When asked to match the Compendium run history card icons, the right first move is finding and instantiating `NTinyCard` — not loading type icon PNGs.
 
 **In-tree example — `NTinyCard` for card icons:**
-`CombatLogCode/UI/Rows/TinyCardFactory.cs` instantiates `res://scenes/cards/tiny_card.tscn` and calls `SetCard` after `Ready` fires (see Gotcha #8 for the `Ready`-vs-`TreeEntered` timing).
+`AdventureLogCode/UI/Rows/TinyCardFactory.cs` instantiates `res://scenes/cards/tiny_card.tscn` and calls `SetCard` after `Ready` fires (see Gotcha #8 for the `Ready`-vs-`TreeEntered` timing).
 
 Full inventory of reusable game list/row UIs in `docs/ui-reuse-options.md`.
 

@@ -1,6 +1,6 @@
-# Combat Log — Roadmap
+# Adventure Log — Roadmap
 
-## Core Goal: Multiplayer-First Combat Log
+## Core Goal: Multiplayer-First Adventure Log
 
 **Multiplayer is a primary target, not an afterthought.** The mod must produce a useful, per-player combat log across all connected players in a co-op session. `affects_gameplay: false` is kept so the mod is allowed in MP without version-matching.
 
@@ -11,7 +11,7 @@ Implications:
 
 ## Landscape (related mods on Nexus)
 
-### Mod 100 — STS2CombatLogMod
+### Mod 100 — STS2AdventureLogMod
 Mature combat log mod. Known features (1.6.0):
 - In-combat log on left side, resize + hide
 - Post-game breakdown screen
@@ -31,14 +31,14 @@ Mature combat log mod. Known features (1.6.0):
 ## Current State
 
 - Toggle overlay (F key) — right side
-- Unified `LogEvent` base + per-type subtypes (`CardPlayEvent`, `DamageReceivedEvent`, `RelicProcEvent`) under `CombatLogCode/Events/`
+- Unified `LogEvent` base + per-type subtypes (`CardPlayEvent`, `DamageReceivedEvent`, `RelicProcEvent`) under `AdventureLogCode/Events/`
 - Every event carries `OwnerNetId` + `OwnerName` + `IsLocal` (resolved via `OwnerResolver` → `PlatformUtil.GetPlayerName`)
 - Cards played history: card, turn, combat, owner name, target — NTinyCard scene reuse
 - Damage-received tracking: blocked / HP lost / overkill / kill flag, source = card name when present else dealer name. Damage rows nested under parent card row (`DamageSubRow`)
 - Relic procs tracking: relic name + id, targets, owner. Hover relic log row → fires `RelicBar.OnFocus` for native tooltip; remote procs skip hover (avoid misattribution); self-targets dropped
 - Hover card row: native game tooltip + `CreatureHighlighter` reticle on owner + target
 - Click card row: opens native `NInspectCardScreen`
-- UI split into `UI/Rows/{CardEntryRow, DamageEntryRow, DamageSubRow, RelicEntryRow}.cs`; `CombatLogPanel.cs` is container/refresh only (debounced)
+- UI split into `UI/Rows/{CardEntryRow, DamageEntryRow, DamageSubRow, RelicEntryRow}.cs`; `AdventureLogPanel.cs` is container/refresh only (debounced)
 - Skip splash logo patch
 - `affects_gameplay: false` → MP-safe (mod allowed without version match)
 
@@ -84,7 +84,7 @@ Self-targets dropped (parameterless `Flash()` targets `Owner.Creature` redundant
 ## Architecture Changes — DONE
 
 ### Tracker unification — done
-`CombatLogTracker` is hub for multiple event streams. Single `LogEvent` base + subtypes (`CardPlayEvent`, `DamageReceivedEvent`, `RelicProcEvent`) under `Events/`, one list, every event carries `OwnerNetId` + `OwnerName` + `IsLocal`.
+`AdventureLogTracker` is hub for multiple event streams. Single `LogEvent` base + subtypes (`CardPlayEvent`, `DamageReceivedEvent`, `RelicProcEvent`) under `Events/`, one list, every event carries `OwnerNetId` + `OwnerName` + `IsLocal`.
 
 ### Patches added
 - `Patches/CardPlayPatch.cs`
@@ -97,7 +97,7 @@ Self-targets dropped (parameterless `Flash()` targets `Owner.Creature` redundant
 - `UI/Rows/CardEntryRow.cs`
 - `UI/Rows/DamageEntryRow.cs` + `DamageSubRow.cs` + `DamageColors.cs`
 - `UI/Rows/RelicEntryRow.cs`
-- `UI/CombatLogPanel.cs` — container + debounced refresh only
+- `UI/AdventureLogPanel.cs` — container + debounced refresh only
 - `UI/CreatureHighlighter.cs` — shared reticle helper
 
 ## MP Fallback Strategy

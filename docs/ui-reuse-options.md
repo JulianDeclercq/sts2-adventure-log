@@ -1,7 +1,7 @@
-# Reusable StS2 UIs for Combat Log Panel
+# Reusable StS2 UIs for Adventure Log Panel
 
 Inventory of game-native list/row UI classes we could reuse in
-`CombatLogCode/UI/CombatLogPanel.cs`. Decompiled from the publicized DLL at
+`AdventureLogCode/UI/AdventureLogPanel.cs`. Decompiled from the publicized DLL at
 `.godot/mono/temp/obj/Debug/PublicizedAssemblies/sts2.*/sts2.dll` (run
 `Scripts/decompile-sts2.sh` to refresh the `.decompiled/` cache).
 

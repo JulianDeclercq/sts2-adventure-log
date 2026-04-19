@@ -1,4 +1,4 @@
-Cut a new release of CombatLog: bump version, commit, tag, build, upload to GitHub Releases.
+Cut a new release of AdventureLog: bump version, commit, tag, build, upload to GitHub Releases.
 
 Argument: $ARGUMENTS
 - One of `patch`, `minor`, `major` (semver bump), or an explicit version like `0.2.0` / `v0.2.0`.
@@ -12,14 +12,14 @@ Argument: $ARGUMENTS
 
 ## Version bump
 
-1. Read current `version` from `CombatLog.json` (e.g. `v0.1.0`).
+1. Read current `version` from `AdventureLog.json` (e.g. `v0.1.0`).
 2. Compute new version:
    - `patch` → `v0.1.0` → `v0.1.1`
    - `minor` → `v0.1.0` → `v0.2.0`
    - `major` → `v0.1.0` → `v1.0.0`
    - Explicit `X.Y.Z` or `vX.Y.Z` → use verbatim (normalize to `vX.Y.Z` with leading `v`).
-3. Edit `CombatLog.json`, set `"version"` to the new value.
-4. Commit: `git add CombatLog.json && git commit -m "release: <new-version>"`.
+3. Edit `AdventureLog.json`, set `"version"` to the new value.
+4. Commit: `git add AdventureLog.json && git commit -m "release: <new-version>"`.
 5. Tag: `git tag <new-version>`.
 
 ## Build and publish
@@ -27,8 +27,8 @@ Argument: $ARGUMENTS
 Run `powershell -NoProfile -File Scripts/package-release.ps1 -Publish`. Report its final line (`Zip -> …` / `Release published.`).
 
 The script:
-- Builds Release, copies DLL + JSON into `dist/stage/CombatLog/`, zips as `dist/CombatLog-<version>.zip`.
-- Calls `gh release create <version> dist/CombatLog-<version>.zip --title "CombatLog <version>" --generate-notes`.
+- Builds Release, copies DLL + JSON into `dist/stage/AdventureLog/`, zips as `dist/AdventureLog-<version>.zip`.
+- Calls `gh release create <version> dist/AdventureLog-<version>.zip --title "AdventureLog <version>" --generate-notes`.
 
 ## Push
 

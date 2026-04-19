@@ -100,7 +100,7 @@ damage 9999 1    # murder first enemy
 power WEAK 3 1   # apply 3 Weak to first enemy (ID must exist)
 ```
 
-## Useful Combos for Combat Log Mod Testing
+## Useful Combos for Adventure Log Mod Testing
 
 Test damage-received UI:
 ```
@@ -108,7 +108,7 @@ block 30 1       # enemy gets 30 block
 draw 5           # more cards to burn
 energy 10        # more plays
 ```
-Then attack. Combat Log should show `-HP` + `(30 blocked)` + skull on kill.
+Then attack. Adventure Log should show `-HP` + `(30 blocked)` + skull on kill.
 
 Test sourceless damage:
 ```

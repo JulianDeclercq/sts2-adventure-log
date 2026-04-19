@@ -22,7 +22,7 @@ Argument: $ARGUMENTS (optional: "on" or "off". If omitted, toggle based on curre
 
 4. **Toggle mods:**
    - **Turning OFF:** Move all mod folders from the mods directory to `$HOME/Downloads/sts2-mods-stash/`. Do NOT delete them.
-   - **Turning ON:** Move all mod folders from `$HOME/Downloads/sts2-mods-stash/` back to the mods directory. If the stash doesn't exist, run `dotnet build` in the project directory to redeploy CombatLog, and warn that other mods (like BaseLib) may need to be manually restored.
+   - **Turning ON:** Move all mod folders from `$HOME/Downloads/sts2-mods-stash/` back to the mods directory. If the stash doesn't exist, run `dotnet build` in the project directory to redeploy AdventureLog, and warn that other mods (like BaseLib) may need to be manually restored.
 
 5. **Report** what was done: which mods were moved, where backups were saved, and the new state (modded/unmodded).
 
