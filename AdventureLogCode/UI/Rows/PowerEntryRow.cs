@@ -36,7 +36,8 @@ public partial class PowerEntryRow : VBoxContainer
         {
             var header = MakeRow();
             AddChild(header);
-            labels.Add(AppendLabelTo(header, $"{NameTruncator.Short(_entry.OwnerCreatureName)}:", PowerColors.Target));
+            // Header label intentionally NOT added to `labels` so hover only recolors the body row.
+            AppendLabelTo(header, $"{NameTruncator.Short(_entry.OwnerCreatureName)}:", PowerColors.Target);
         }
 
         var body = MakeRow();

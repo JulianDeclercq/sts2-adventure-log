@@ -22,6 +22,7 @@ When diagnosing a bug or feature request triggered by a specific card, relic, po
 
 - Commit messages should be very concise (short single line)
 - Do NOT include `Co-Authored-By` trailers
+- Before committing, check the current branch matches the work. If the work has drifted (e.g., branch is `fix/dredge-recalled-below` but commits are about Neurosurge nesting), surface it and offer to cut a fresh branch instead of piling unrelated commits onto the wrong one.
 
 ## Build & Deploy
 

@@ -9,10 +9,6 @@ Implications:
 - The log shows activity from **all** players in the session, not just the local one.
 - Data model must carry a stable `NetId` / Steam ID per event.
 
-## TODO
-- Neurosurge gain 3 energy should be below.
-
-
 ## Non-Goals (for now)
 - Post-game breakdown screen
 - Cross-run persistence
