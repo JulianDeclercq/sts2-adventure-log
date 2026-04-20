@@ -12,11 +12,13 @@ public partial class DamageSubRow : HBoxContainer
     private readonly int _hpLost;
     private readonly int _blocked;
     private readonly bool _killed;
+    private readonly IReadOnlyList<string> _modifiers;
     private readonly CreatureHighlighter _highlighter;
 
     public DamageSubRow(
         string victimName, uint? victimCombatId, uint? sourceCombatId,
         int hpLost, int blocked, bool killed,
+        IReadOnlyList<string> modifiers,
         CreatureHighlighter highlighter)
     {
         _victimName = victimName;
@@ -25,6 +27,7 @@ public partial class DamageSubRow : HBoxContainer
         _hpLost = hpLost;
         _blocked = blocked;
         _killed = killed;
+        _modifiers = modifiers;
         _highlighter = highlighter;
     }
 
@@ -45,6 +48,9 @@ public partial class DamageSubRow : HBoxContainer
         labels.Add(victimLabel);
 
         labels.AddRange(DamageColors.AppendDamageLabels(this, _hpLost, _blocked, _killed));
+
+        var modifierLabel = DamageColors.AppendModifiersLabel(this, _modifiers);
+        if (modifierLabel is not null) labels.Add(modifierLabel);
 
         var originalColors = labels.Select(l => l.GetThemeColor("font_color")).ToList();
 

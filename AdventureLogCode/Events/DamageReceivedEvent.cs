@@ -11,6 +11,7 @@ public sealed record DamageReceivedEvent(
     int OverkillDamage,
     bool WasKilled,
     bool WasFullyBlocked,
+    IReadOnlyList<string> Modifiers,
     ulong? OwnerNetId,
     string OwnerName,
     bool IsLocal,

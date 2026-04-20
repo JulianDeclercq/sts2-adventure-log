@@ -36,6 +36,9 @@ public partial class DamageEntryRow : HBoxContainer
 
         labels.AddRange(DamageColors.AppendDamageLabels(this, _entry.HpLost, _entry.BlockedDamage, _entry.WasKilled));
 
+        var modifierLabel = DamageColors.AppendModifiersLabel(this, _entry.Modifiers);
+        if (modifierLabel is not null) labels.Add(modifierLabel);
+
         var sourceCombatId = _entry.SourceCombatId;
         var victimCombatId = _entry.VictimCombatId;
         var originalColors = labels.Select(l => l.GetThemeColor("font_color")).ToList();
