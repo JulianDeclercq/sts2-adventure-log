@@ -47,7 +47,14 @@ Copy-Item $json (Join-Path $stage 'AdventureLog.json')
 
 $zip = Join-Path $dist "AdventureLog-$version.zip"
 Remove-Item $zip -Force -ErrorAction SilentlyContinue
-Compress-Archive -Path $stage -DestinationPath $zip
+# Compress-Archive writes backslash separators on Windows (violates ZIP spec); use .NET API for forward slashes.
+Add-Type -AssemblyName System.IO.Compression.FileSystem
+[System.IO.Compression.ZipFile]::CreateFromDirectory(
+    (Join-Path $dist 'stage'),
+    $zip,
+    [System.IO.Compression.CompressionLevel]::Optimal,
+    $false
+)
 
 Remove-Item (Join-Path $dist 'stage') -Recurse -Force
 
