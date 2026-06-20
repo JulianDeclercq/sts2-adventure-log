@@ -48,6 +48,23 @@ These are the failures that only show up when the game loads the mod. Verify the
 
 6. **One confirming launch** (optional, user-driven): load the mod; main menu should read "Loaded 1 mod" with no errors. Crash log at `%appdata%/SlayTheSpire2/logs/godot.log` (Harmony reports one failed patch at a time — if one slips through, the log names it; fix and repeat).
 
-## Then
+## Steam Workshop re-upload
 
-If this was for a workshop release, the mod still serves the old dll until re-uploaded — offer to bump version (`AdventureLog.json`) and run `/sts-2-release` or the ModUploader flow.
+The workshop item keeps serving the old dll until re-uploaded. The uploader lives at `C:\Users\julian\Downloads\ModUploader-win-x64\`; its workspace folder is `AdventureLog/` (separate from this repo). The existing item id is tracked in `AdventureLog/mod_id.txt` — same upload command **updates** that item, never creates a new one.
+
+1. Bump `version` in this repo's `AdventureLog.json` (e.g. `v0.3.1` → `v0.3.2`).
+2. Copy the fresh build + manifest into the uploader workspace `content/`:
+   ```
+   cp .godot/mono/temp/bin/Release/AdventureLog.dll "<uploader>/AdventureLog/content/"
+   cp AdventureLog.json                            "<uploader>/AdventureLog/content/"
+   ```
+3. Set `changeNote` in `<uploader>/AdventureLog/workshop.json` to what changed.
+4. Upload (Steam must be running). `-w` is resolved relative to the current dir, so run **from the uploader folder**:
+   ```
+   cd "C:\Users\julian\Downloads\ModUploader-win-x64"
+   .\ModUploader.exe upload -w AdventureLog
+   ```
+   Success line: `Successfully uploaded 'Adventure Log' to the workshop with id <id>!`. (`k_EItemUpdateStatusInvalid` near the end is normal noise, not an error.)
+5. Commit the version bump.
+
+Note: `/sts-2-release` is a separate flow for **GitHub Releases**, not Steam Workshop.
