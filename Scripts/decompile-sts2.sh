@@ -14,7 +14,8 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_ROOT"
 
 OUTPUT_DIR=".decompiled"
-DLL_GLOB=".godot/mono/temp/obj/Debug/PublicizedAssemblies/sts2.*/sts2.dll"
+# Match whichever config was built (Debug or Release); newest wins below.
+DLL_GLOB=".godot/mono/temp/obj/*/PublicizedAssemblies/sts2.*/sts2.dll"
 ILSPYCMD="${ILSPYCMD:-$HOME/.dotnet/tools/ilspycmd}"
 
 FORCE=0
