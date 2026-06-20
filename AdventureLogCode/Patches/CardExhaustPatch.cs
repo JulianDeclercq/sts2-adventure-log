@@ -14,7 +14,7 @@ namespace AdventureLog.AdventureLogCode.Patches;
 public static class CardExhaustPatch
 {
     [HarmonyPostfix]
-    public static void Postfix(CombatState __0, CardModel __1)
+    public static void Postfix(ICombatState __0, CardModel __1)
     {
         try
         {

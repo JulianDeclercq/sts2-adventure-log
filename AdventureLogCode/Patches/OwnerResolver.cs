@@ -18,7 +18,7 @@ public static class OwnerResolver
             if (runManager is null) return;
 
             // Singleplayer / fake-MP: no remote players — trust the owner as local.
-            if (runManager.IsSinglePlayerOrFakeMultiplayer) return;
+            if (runManager.IsSingleplayerOrFakeMultiplayer) return;
 
             var netService = runManager.NetService;
             if (netService is null) return;

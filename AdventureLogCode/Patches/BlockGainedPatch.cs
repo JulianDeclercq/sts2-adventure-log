@@ -18,7 +18,7 @@ namespace AdventureLog.AdventureLogCode.Patches;
 public static class BlockGainedPatch
 {
     [HarmonyPostfix]
-    public static void Postfix(CombatState __0, Creature __1, int __2, ValueProp __3, CardPlay? __4)
+    public static void Postfix(ICombatState __0, Creature __1, int __2, ValueProp __3, CardPlay? __4)
     {
         try
         {

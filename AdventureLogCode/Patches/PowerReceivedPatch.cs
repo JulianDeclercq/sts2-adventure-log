@@ -4,6 +4,7 @@ using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Combat.History;
 using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Entities.Creatures;
+using MegaCrit.Sts2.Core.GameActions.Multiplayer;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Models.Powers;
 
@@ -22,7 +23,7 @@ public static class PowerReceivedPatch
     internal static CardModel? PendingApplySourceCard;
 
     [HarmonyPostfix]
-    public static void Postfix(CombatState __0, PowerModel __1, decimal __2, Creature? __3)
+    public static void Postfix(ICombatState __0, PowerModel __1, decimal __2, Creature? __3)
     {
         try
         {
@@ -84,13 +85,13 @@ public static class PowerReceivedPatch
 }
 
 [HarmonyPatch(typeof(PowerCmd), nameof(PowerCmd.Apply),
-    new[] { typeof(PowerModel), typeof(Creature), typeof(decimal), typeof(Creature), typeof(CardModel), typeof(bool) })]
+    new[] { typeof(PlayerChoiceContext), typeof(PowerModel), typeof(Creature), typeof(decimal), typeof(Creature), typeof(CardModel), typeof(bool) })]
 public static class PowerApplyTargetStashPatch
 {
     [HarmonyPrefix]
-    public static void Prefix(Creature __1, CardModel __4)
+    public static void Prefix(Creature __2, CardModel __5)
     {
-        PowerReceivedPatch.PendingApplyTarget = __1;
-        PowerReceivedPatch.PendingApplySourceCard = __4;
+        PowerReceivedPatch.PendingApplyTarget = __2;
+        PowerReceivedPatch.PendingApplySourceCard = __5;
     }
 }

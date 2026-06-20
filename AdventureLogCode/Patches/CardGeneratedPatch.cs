@@ -2,6 +2,7 @@ using Godot;
 using HarmonyLib;
 using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Combat.History;
+using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.Models;
 
 namespace AdventureLog.AdventureLogCode.Patches;
@@ -16,12 +17,12 @@ namespace AdventureLog.AdventureLogCode.Patches;
 public static class CardGeneratedPatch
 {
     [HarmonyPostfix]
-    public static void Postfix(CombatState __0, CardModel __1, bool __2)
+    public static void Postfix(ICombatState __0, CardModel __1, Player? __2)
     {
         try
         {
             var card = __1;
-            var generatedByPlayer = __2;
+            var generatedByPlayer = __2 is not null;
             if (card is null) return;
 
             var name = card.Title ?? card.GetType().Name;
