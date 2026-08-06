@@ -9,6 +9,7 @@ internal static class DamageColors
     public static readonly Color Neutral = new(0.8f, 0.8f, 0.8f);
     public static readonly Color Source = new(0.75f, 0.65f, 0.55f);
     public static readonly Color Hover = new(1.0f, 0.95f, 0.5f);
+    public static readonly Color Modifier = new(0.55f, 0.75f, 0.95f);
 
     public static List<Label> AppendDamageLabels(Container target, int hpLost, int blocked, bool killed)
     {
@@ -31,6 +32,12 @@ internal static class DamageColors
             labels.Add(AddLabel(target, " no damage", Neutral));
 
         return labels;
+    }
+
+    public static Label? AppendModifiersLabel(Container target, IReadOnlyList<string>? modifiers)
+    {
+        if (modifiers is null || modifiers.Count == 0) return null;
+        return AddLabel(target, $" [{string.Join(", ", modifiers)}]", Modifier);
     }
 
     private static Label AddLabel(Container target, string text, Color color)

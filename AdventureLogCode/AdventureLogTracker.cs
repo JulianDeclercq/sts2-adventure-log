@@ -40,6 +40,7 @@ public static class AdventureLogTracker
         string victimName, uint? victimCombatId,
         string sourceName, uint? sourceCombatId, string? sourceCardName,
         int blocked, int hpLost, int overkill, bool wasKilled, bool wasFullyBlocked,
+        IReadOnlyList<string> modifiers,
         ulong? ownerNetId, string ownerName, bool isLocal)
     {
         _orderCounter++;
@@ -47,6 +48,7 @@ public static class AdventureLogTracker
             victimName, victimCombatId,
             sourceName, sourceCombatId, sourceCardName,
             blocked, hpLost, overkill, wasKilled, wasFullyBlocked,
+            modifiers,
             ownerNetId, ownerName, isLocal,
             CurrentTurn, _orderCounter, CurrentCombat);
         Append(e);

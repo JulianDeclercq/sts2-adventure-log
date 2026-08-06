@@ -458,7 +458,7 @@ public partial class AdventureLogPanel : Control
                 foreach (var g in GroupDamagesByVictim(c.Damages))
                     rows.Add(new DamageSubRow(
                         g.VictimName, g.VictimCombatId, c.Card.PlayerCombatId,
-                        g.HpLost, g.Blocked, g.Killed, _highlighter));
+                        g.HpLost, g.Blocked, g.Killed, g.Modifiers, _highlighter));
                 foreach (var p in c.Powers)
                     rows.Add(new PowerSubRow(p, _highlighter));
                 foreach (var e in c.Energies)
@@ -487,7 +487,7 @@ public partial class AdventureLogPanel : Control
                 foreach (var g in GroupDamagesByVictim(r.Damages))
                     rows.Add(new DamageSubRow(
                         g.VictimName, g.VictimCombatId, relicSource,
-                        g.HpLost, g.Blocked, g.Killed, _highlighter));
+                        g.HpLost, g.Blocked, g.Killed, g.Modifiers, _highlighter));
                 foreach (var p in r.Powers)
                     rows.Add(new PowerSubRow(p, _highlighter));
                 foreach (var e in r.EnergyDeltas)
@@ -522,7 +522,7 @@ public partial class AdventureLogPanel : Control
                 foreach (var gd in GroupDamagesByVictim(p.Damages))
                     rows.Add(new DamageSubRow(
                         gd.VictimName, gd.VictimCombatId, null,
-                        gd.HpLost, gd.Blocked, gd.Killed, _highlighter));
+                        gd.HpLost, gd.Blocked, gd.Killed, gd.Modifiers, _highlighter));
                 foreach (var pw in p.Powers)
                     rows.Add(new PowerSubRow(pw, _highlighter));
                 foreach (var b in p.BlockGains)
@@ -544,8 +544,9 @@ public partial class AdventureLogPanel : Control
         return rows;
     }
 
-    private readonly record struct VictimGroup(
-        string VictimName, uint? VictimCombatId, int HpLost, int Blocked, bool Killed);
+    private sealed record VictimGroup(
+        string VictimName, uint? VictimCombatId, int HpLost, int Blocked, bool Killed,
+        IReadOnlyList<string> Modifiers);
 
     private static List<VictimGroup> GroupDamagesByVictim(IReadOnlyList<DamageReceivedEvent> damages)
     {
@@ -562,15 +563,30 @@ public partial class AdventureLogPanel : Control
                     HpLost = existing.HpLost + d.HpLost,
                     Blocked = existing.Blocked + d.BlockedDamage,
                     Killed = existing.Killed || d.WasKilled,
+                    Modifiers = MergeModifiers(existing.Modifiers, d.Modifiers),
                 };
             }
             else
             {
                 indexByKey[key] = result.Count;
-                result.Add(new VictimGroup(d.VictimName, d.VictimCombatId, d.HpLost, d.BlockedDamage, d.WasKilled));
+                result.Add(new VictimGroup(
+                    d.VictimName, d.VictimCombatId, d.HpLost, d.BlockedDamage, d.WasKilled,
+                    d.Modifiers));
             }
         }
         return result;
+    }
+
+    private static IReadOnlyList<string> MergeModifiers(
+        IReadOnlyList<string> a, IReadOnlyList<string> b)
+    {
+        if (b.Count == 0) return a;
+        if (a.Count == 0) return b;
+        List<string> merged = [.. a];
+        HashSet<string> seen = new(a, StringComparer.Ordinal);
+        foreach (var name in b)
+            if (seen.Add(name)) merged.Add(name);
+        return merged;
     }
 
     private abstract record RenderItem(int CombatNumber, int TurnNumber);
