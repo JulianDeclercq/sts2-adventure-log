@@ -1,8 +1,8 @@
 using System.Reflection;
 using Godot;
-using HarmonyLib;
 using MegaCrit.Sts2.Core.HoverTips;
 using MegaCrit.Sts2.Core.Nodes.Combat;
+using MegaCrit.Sts2.Core.Nodes.HoverTips;
 
 namespace AdventureLog.AdventureLogCode.UI;
 
@@ -62,27 +62,16 @@ public partial class HistoryButton : TextureRect
         _tween.TweenProperty(this, "scale", new Vector2(HoverScale, HoverScale), TweenDuration)
             .SetEase(Tween.EaseType.Out);
 
-        var discardBtn = FindDiscardButton();
-        if (discardBtn is null) return;
-
-        var trav = Traverse.Create(discardBtn);
-
-        // Swap the discard button's hover tip with ours
-        var originalTip = trav.Field("_hoverTip").GetValue();
         _cachedHoverTip ??= CreateHoverTip(
             "Adventure Log (F)",
             "Tracks all cards played during the run.\n\nClick to toggle the combat log.");
-        trav.Field("_hoverTip").SetValue(_cachedHoverTip);
 
-        // Show via game's code path for perfect positioning
-        trav.Method("OnFocus").GetValue();
+        var tipSet = NHoverTipSet.CreateAndShow(this, _cachedHoverTip);
+        if (tipSet is null) return;
 
-        // Suppress discard button's scale animation
-        trav.Field<Tween>("_bumpTween").Value?.Kill();
-        discardBtn.Scale = Vector2.One;
-
-        // Restore original hover tip so discard pile still works
-        trav.Field("_hoverTip").SetValue(originalTip);
+        // Same spot the game uses for the discard pile tip (NCombatCardPile.OnFocus)
+        var anchor = FindDiscardButton()?.GlobalPosition ?? GlobalPosition;
+        tipSet.GlobalPosition = anchor + new Vector2(-320f, -370f);
     }
 
     private void OnMouseExited()
@@ -92,13 +81,7 @@ public partial class HistoryButton : TextureRect
         _tween.TweenProperty(this, "scale", Vector2.One, TweenDuration)
             .SetEase(Tween.EaseType.Out);
 
-        var discardBtn = FindDiscardButton();
-        if (discardBtn is null) return;
-
-        var trav = Traverse.Create(discardBtn);
-        trav.Method("OnUnfocus").GetValue();
-        trav.Field<Tween>("_bumpTween").Value?.Kill();
-        discardBtn.Scale = Vector2.One;
+        NHoverTipSet.Remove(this);
     }
 
     private void OnGuiInput(InputEvent @event)

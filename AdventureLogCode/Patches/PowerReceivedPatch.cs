@@ -7,20 +7,22 @@ using MegaCrit.Sts2.Core.Entities.Creatures;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Models.Powers;
+using System.Runtime.CompilerServices;
 
 namespace AdventureLog.AdventureLogCode.Patches;
 
 [HarmonyPatch(typeof(CombatHistory), nameof(CombatHistory.PowerReceived))]
 public static class PowerReceivedPatch
 {
-    // PowerCmd.Apply fires History.PowerReceived BEFORE power.ApplyInternal sets
-    // power.Owner = target, so on first application power.Owner is null here. Stash
-    // the target from the Apply prefix below and read it as fallback.
-    internal static Creature? PendingApplyTarget;
+    // Power instance that PowerModel.ApplyInternal just set up. PowerCmd.Apply calls
+    // ApplyInternal (sets Owner + Amount) right before History.PowerReceived, so on a
+    // first application power.Amount already includes the delta.
+    internal static PowerModel? JustAppliedPower;
 
-    // Source card for the in-flight PowerCmd.Apply call. Used to attribute delayed
-    // effects (e.g. EnergyNextTurnPower) back to the card that scheduled them.
-    internal static CardModel? PendingApplySourceCard;
+    // Source card per power instance, written by the PowerCmd.Apply / ModifyAmount
+    // prefixes. Keyed by instance so an early-returning Apply or a nested apply during
+    // the awaited hooks can't leak its card onto an unrelated power change.
+    internal static readonly ConditionalWeakTable<PowerModel, CardModel> SourceCardByPower = new();
 
     [HarmonyPostfix]
     public static void Postfix(ICombatState __0, PowerModel __1, decimal __2, Creature? __3)
@@ -33,11 +35,12 @@ public static class PowerReceivedPatch
             var applier = __3;
 
             // decimal is always whole in practice (PowerModel.SetAmount casts to int).
-            // PowerReceived fires BEFORE SetAmount mutates (PowerCmd.Apply:525 and
-            // ModifyAmount:1393 — both call History.PowerReceived, then SetAmount with the
-            // post-apply total). So power.Amount here is pre-apply; compute post-state manually.
+            // First application (PowerCmd.Apply): ApplyInternal already set Amount.
+            // Stacking (PowerCmd.ModifyAmount): PowerReceived fires before SetAmount.
             var delta = (int)__2;
-            var newTotal = power.Amount + delta;
+            var firstApply = ReferenceEquals(power, JustAppliedPower);
+            JustAppliedPower = null;
+            var newTotal = firstApply ? power.Amount : power.Amount + delta;
 
             var powerId = power.Id?.Entry ?? power.GetType().Name;
             var powerTitle = power.Title?.GetFormattedText() ?? powerId;
@@ -45,10 +48,11 @@ public static class PowerReceivedPatch
             var stackType = power.StackType;
             var icon = power.Icon;
 
-            var ownerCreature = power.Owner ?? PendingApplyTarget;
-            var sourceCard = PendingApplySourceCard;
-            PendingApplyTarget = null;
-            PendingApplySourceCard = null;
+            // Owner is always set by now: ApplyInternal runs first on a new power,
+            // and ModifyAmount only targets powers already on a creature.
+            var ownerCreature = power.Owner;
+            SourceCardByPower.TryGetValue(power, out var sourceCard);
+            SourceCardByPower.Remove(power);
             var ownerCreatureName = ownerCreature?.Name ?? "";
             var ownerCreatureCombatId = ownerCreature?.CombatId;
 
@@ -86,12 +90,36 @@ public static class PowerReceivedPatch
 
 [HarmonyPatch(typeof(PowerCmd), nameof(PowerCmd.Apply),
     new[] { typeof(PlayerChoiceContext), typeof(PowerModel), typeof(Creature), typeof(decimal), typeof(Creature), typeof(CardModel), typeof(bool) })]
-public static class PowerApplyTargetStashPatch
+public static class PowerApplySourcePatch
+{
+    // When the power already exists, Apply forwards to ModifyAmount, whose prefix
+    // re-keys the card onto the existing instance.
+    [HarmonyPrefix]
+    public static void Prefix(PowerModel __1, CardModel? __5) => PowerSource.Set(__1, __5);
+}
+
+[HarmonyPatch(typeof(PowerCmd), nameof(PowerCmd.ModifyAmount))]
+public static class PowerModifySourcePatch
 {
     [HarmonyPrefix]
-    public static void Prefix(Creature __2, CardModel __5)
+    public static void Prefix(PowerModel __1, CardModel? __4) => PowerSource.Set(__1, __4);
+}
+
+[HarmonyPatch(typeof(PowerModel), nameof(PowerModel.ApplyInternal))]
+public static class PowerApplyInternalPatch
+{
+    [HarmonyPrefix]
+    public static void Prefix(PowerModel __instance, decimal __1)
     {
-        PowerReceivedPatch.PendingApplyTarget = __2;
-        PowerReceivedPatch.PendingApplySourceCard = __5;
+        if (__1 != 0m) PowerReceivedPatch.JustAppliedPower = __instance;
+    }
+}
+
+internal static class PowerSource
+{
+    public static void Set(PowerModel power, CardModel? card)
+    {
+        if (card is null) PowerReceivedPatch.SourceCardByPower.Remove(power);
+        else PowerReceivedPatch.SourceCardByPower.AddOrUpdate(power, card);
     }
 }

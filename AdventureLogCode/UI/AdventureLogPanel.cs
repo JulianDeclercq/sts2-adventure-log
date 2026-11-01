@@ -1,6 +1,7 @@
 using AdventureLog.AdventureLogCode.Events;
 using AdventureLog.AdventureLogCode.UI.Rows;
 using Godot;
+using MegaCrit.Sts2.Core.Nodes;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Nodes.Screens;
 
@@ -67,6 +68,7 @@ public partial class AdventureLogPanel : Control
             OffsetTop = viewport.Y * 0.07f + 15;
             OffsetBottom = OffsetTop + defaultHeight;
         }
+        ClampToViewport();
         CustomMinimumSize = Vector2.Zero;
         MouseFilter = MouseFilterEnum.Stop;
         MouseDefaultCursorShape = CursorShape.Move;
@@ -131,13 +133,19 @@ public partial class AdventureLogPanel : Control
         if (_instance == this) _instance = null;
     }
 
-    public override void _UnhandledKeyInput(InputEvent @event)
+    // F on keyboard, right stick click (R3) on a gamepad. The game's default controller
+    // map uses every other button; unhandled input means we never steal one it consumed.
+    public override void _UnhandledInput(InputEvent @event)
     {
-        if (@event is InputEventKey key && key.Pressed && !key.Echo && key.Keycode == Key.F)
+        var toggle = @event switch
         {
-            Toggle();
-            GetViewport().SetInputAsHandled();
-        }
+            InputEventKey { Pressed: true, Echo: false, Keycode: Key.F } => true,
+            InputEventJoypadButton { Pressed: true, ButtonIndex: JoyButton.RightStick } => true,
+            _ => false,
+        };
+        if (!toggle) return;
+        Toggle();
+        GetViewport().SetInputAsHandled();
     }
 
     public override void _GuiInput(InputEvent ev)
@@ -179,11 +187,35 @@ public partial class AdventureLogPanel : Control
     {
         _isShown = !_isShown;
         Visible = _isShown;
-        if (_isShown) RefreshList();
+        if (_isShown)
+        {
+            ClampToViewport();
+            RefreshList();
+        }
     }
 
-    public void SavePosition() =>
+    public void SavePosition()
+    {
+        ClampToViewport();
         PanelSettings.Save(new PanelSettings.Data(OffsetLeft, OffsetRight, OffsetTop, OffsetBottom));
+    }
+
+    /// <summary>
+    /// Keeps the panel fully on screen. A position saved on a wider screen (or dragged past
+    /// the edge) would otherwise stay unreachable, e.g. on a 16:10 Steam Deck.
+    /// </summary>
+    private void ClampToViewport()
+    {
+        var rect = GetViewport().GetVisibleRect();
+        var width = Mathf.Min(OffsetRight - OffsetLeft, rect.Size.X);
+        var height = Mathf.Min(OffsetBottom - OffsetTop, rect.Size.Y);
+        var left = Mathf.Clamp(OffsetLeft, rect.Position.X, rect.End.X - width);
+        var top = Mathf.Clamp(OffsetTop, rect.Position.Y, rect.End.Y - height);
+        OffsetLeft = left;
+        OffsetRight = left + width;
+        OffsetTop = top;
+        OffsetBottom = top + height;
+    }
 
     private void OnHistoryChanged()
     {
@@ -194,8 +226,8 @@ public partial class AdventureLogPanel : Control
     {
         var combat = AdventureLogTracker.CurrentCombat;
         _status.Text = combat > 0
-            ? $"Combat {combat}  ·  F to toggle"
-            : "F to toggle";
+            ? $"Combat {combat}  ·  F / R3 to toggle"
+            : "F / R3 to toggle";
     }
 
     // Full reset path. Used only on show/toggle — state is discarded and rebuilt from history.
@@ -732,34 +764,20 @@ public partial class AdventureLogPanel : Control
 
     private void OpenInspectScreen(CardModel card)
     {
-        var inspectScreen = FindInspectCardScreen() ?? NInspectCardScreen.Create();
-        if (inspectScreen is null)
-        {
-            GD.PrintErr("[AdventureLog] Failed to create NInspectCardScreen.");
-            return;
-        }
-        if (inspectScreen.GetParent() is null)
-            GetTree().Root.AddChild(inspectScreen);
-
         try
         {
+            // The game's shared inspect screen, created once under its inspection container.
+            var inspectScreen = NGame.Instance?.GetInspectCardScreen();
+            if (inspectScreen is null)
+            {
+                GD.PrintErr("[AdventureLog] Inspect card screen not available.");
+                return;
+            }
             inspectScreen.Open([card], 0);
         }
         catch (Exception e)
         {
             GD.PrintErr($"[AdventureLog] Failed to open inspect screen: {e.Message}");
         }
-    }
-
-    private NInspectCardScreen? FindInspectCardScreen()
-    {
-        var root = GetTree()?.Root;
-        if (root is null) return null;
-
-        foreach (var node in root.FindChildren("*", nameof(NInspectCardScreen), recursive: true, owned: false))
-        {
-            if (node is NInspectCardScreen screen) return screen;
-        }
-        return null;
     }
 }

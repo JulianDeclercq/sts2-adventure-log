@@ -1,4 +1,3 @@
-using HarmonyLib;
 using MegaCrit.Sts2.Core.Platform;
 using MegaCrit.Sts2.Core.Runs;
 
@@ -29,12 +28,11 @@ public static class OwnerResolver
 
             try
             {
-                var localNetId = Traverse.Create(netService).Property("LocalPlayer").Field("NetId").GetValue<ulong>();
-                isLocal = localNetId == netId.Value;
+                isLocal = netService.NetId == netId.Value;
             }
             catch
             {
-                // LocalPlayer not resolvable — keep default (treat as local to match solo behavior)
+                // NetId throws when not connected — keep default (treat as local to match solo behavior)
             }
         }
         catch { }

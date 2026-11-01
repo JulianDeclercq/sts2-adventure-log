@@ -15,13 +15,16 @@ public sealed class CreatureHighlighter
     {
         if (combatId is null) return;
 
-        var combatRoom = FindCombatRoom();
+        var combatRoom = NCombatRoom.Instance;
         if (combatRoom is null) return;
 
         foreach (var creatureNode in combatRoom.CreatureNodes)
         {
             if (creatureNode.Entity?.CombatId == combatId)
             {
+                // Already selected by the game (e.g. while aiming a card): leave it alone,
+                // so Clear() doesn't hide the game's own reticle.
+                if (creatureNode._selectionReticle?.IsSelected == true) return;
                 _highlighted.Add(creatureNode);
                 creatureNode.ShowSingleSelectReticle();
                 return;
@@ -37,17 +40,5 @@ public sealed class CreatureHighlighter
                 creatureNode.HideSingleSelectReticle();
         }
         _highlighted.Clear();
-    }
-
-    private NCombatRoom? FindCombatRoom()
-    {
-        var root = _treeAnchor.GetTree()?.Root;
-        if (root is null) return null;
-
-        foreach (var node in root.FindChildren("*", recursive: true, owned: false))
-        {
-            if (node is NCombatRoom room) return room;
-        }
-        return null;
     }
 }
