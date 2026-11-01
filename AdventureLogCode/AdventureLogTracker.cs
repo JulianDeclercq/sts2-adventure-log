@@ -215,6 +215,8 @@ public static class AdventureLogTracker
         OnHistoryChanged?.Invoke();
     }
 
+    internal static bool TurnPending;
+
     public static void OnNewTurn()
     {
         // First SetupPlayerTurn of a combat keeps Turn 0 so start-of-combat relic procs
@@ -230,6 +232,7 @@ public static class AdventureLogTracker
         CurrentTurn = 0;
         _orderCounter = 0;
         _firstPlayerTurn = true;
+        TurnPending = true;
         History.Clear();
         ScheduledEnergySourceByPlayer.Clear();
         OnHistoryChanged?.Invoke();

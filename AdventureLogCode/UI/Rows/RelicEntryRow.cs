@@ -1,5 +1,6 @@
 using AdventureLog.AdventureLogCode.Events;
 using Godot;
+using MegaCrit.Sts2.Core.Nodes;
 using MegaCrit.Sts2.Core.Nodes.HoverTips;
 using MegaCrit.Sts2.Core.Nodes.Relics;
 
@@ -111,17 +112,13 @@ public partial class RelicEntryRow : HBoxContainer
 
     private NRelicInventoryHolder? FindRelicHolder(string relicId)
     {
-        var root = GetTree()?.Root;
-        if (root is null) return null;
+        var inv = NRun.Instance?.GlobalUi?.RelicInventory;
+        if (inv is null) return null;
 
-        foreach (var node in root.FindChildren("*", recursive: true, owned: false))
+        foreach (var holder in inv.RelicNodes)
         {
-            if (node is not NRelicInventory inv) continue;
-            foreach (var holder in inv.RelicNodes)
-            {
-                if (holder._relic?.Model?.Id.Entry == relicId)
-                    return holder;
-            }
+            if (holder._relic?.Model?.Id.Entry == relicId)
+                return holder;
         }
         return null;
     }
